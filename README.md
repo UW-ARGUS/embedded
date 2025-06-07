@@ -1,2 +1,2 @@
-# firmware
-ARGUS device firmware repo
+# embedded
+ARGUS device embedded repo
