@@ -1,4 +1,4 @@
-# ARGUS embedded
+# ARGUS Embedded Software
 ARGUS device embedded repo
 
 ## Overview
