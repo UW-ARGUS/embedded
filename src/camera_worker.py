@@ -4,13 +4,16 @@ import struct
 import time
 import logging
 
-class Camera_Worker:
+import multiprocessing as mp
+
+class CameraWorker:
     def __init__(
             self,
             device_id: int,
             port: int,
             host: int,
-            fps: float
+            fps: float,
+            stop_event # multiprocessing event for when workers should stop streaming data
         ):
         """
         Initialize camera worker for current camera device Id and TCP port
@@ -21,6 +24,7 @@ class Camera_Worker:
         self.fps = fps
         self.camera = None # OpenCV camera object
         self.socket = None  # TCP server socket
+        self.stop_event = stop_event
         
         logging.basicConfig(
             level=logging.DEBUG
@@ -41,7 +45,7 @@ class Camera_Worker:
         except Exception as e:
             self.__logger.error(f"Camera-{self.id}] Error: {e}")
         finally:
-            self.__cleanup()
+            self.__del__()
         
     def __setup_camera(self):
         """
@@ -90,9 +94,9 @@ class Camera_Worker:
         - 4 bytes: image length (int)
         - N bytes: encoded image frame
         """
-        delay = float(1.0/ self.fps)
+        delay_seconds = float(1.0/ self.fps)
         
-        while True:
+        while not self.stop_event.is_set():
             # Capture frame
             result, frame = self.camera.read()
 
@@ -128,15 +132,22 @@ class Camera_Worker:
                 self.__logger.error(f"[Camera-{self.id}] Unable to connect to server")
                 break
             
-            time.sleep(delay)
+            time.sleep(delay_seconds)
     
-    def __cleanup(self):
+    def __del__(self):
         """
         Releases camera and socket resources
         """
         if self.camera:
             self.camera.release()
         if self.socket:
+            # Try disabling the communication first to gracefully end it if the socket is not already closed
+            try:
+                self.socket_instance.shutdown(socket.SHUT_RDWR)
+            except:
+                pass
+
+            # Close and release the socket
             self.socket.close()
         
         self.__logger.info(f"[Camera-{self.id}] Camera and socket closed, exiting")
