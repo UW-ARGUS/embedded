@@ -36,7 +36,6 @@ class CameraDeviceController:
         Start individual processes for each camera device and socket with unique port
         """
         self.__logger.info("Starting camera workers")
-        stop_event = mp.Event() # Shared stop event between all workers
         
         # TODO: Manually get the USB device port numbers (maybe using lsusb) and only start the cameras that are actually connected
         for device_id in range(NUM_CAMERAS):
