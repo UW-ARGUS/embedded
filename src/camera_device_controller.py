@@ -17,26 +17,16 @@ CAMERA_FPS = 90.0   # FPS for streaming
 
 LOG_LEVEL = logging.DEBUG
 
-class CameraDeviceMapping(Enum):
-    """
-    Map Camera Id based on USB Device Id
-    """
-    FRONT = 0
-    RIGHT = 1
-    LEFT = 2
-    BACK = 3
-
 class CameraDeviceController:
     """
     Controls and manages multiple Camera_Worker processes for each USB camera connected
     """
-    
     def __init__(self):
         """
         Initializes Camera Device Controller which manages and handles all of the worker processes
         """
         self.worker_queue = deque() # Store active workers in queue for cleanup process
-        self.stop_workers_event = [] # Event to track when workers should all terminate
+        self.stop_event = mp.Event() # Shared stop event between all workers to track when should terminate
         
         logging.basicConfig(level=LOG_LEVEL)
         self.__logger = logging.getLogger(__name__)
@@ -51,7 +41,7 @@ class CameraDeviceController:
         for device_id in range(NUM_CAMERAS):
             # Create worker instance (opens camera and creates individual socket)
             self.__logger.info(f"Starting Camera_worker ({device_id}, {BASE_PORT+device_id})")
-            camera_worker = self.__init_camera_worker(device_id)
+            camera_worker = self.__init_camera_worker(device_id, self.stop_event)
             
             # Start new process and add to queue
             process = mp.Process(target=camera_worker.run_camera, name=f"Worker-{device_id}")
@@ -66,10 +56,9 @@ class CameraDeviceController:
         Stops all activate camera processes and terminates gracefully
         """
         self.__logger.info("Stopping all Camera_Worker processes")
-        
         # Tells each worker to exit the stream_data loop
-        for event in self.stop_workers_event:
-            event.set()
+        self.stop_event.set()
+        
         for worker in self.worker_queue:
             worker.join()
         self.__logger.info("All workers stopped")
@@ -83,21 +72,17 @@ class CameraDeviceController:
                 
         self.__logger.info("All Camera_Worker processes terminated")
     
-    def __init_camera_worker(self, device_id):
+    def __init_camera_worker(self, device_id, stop_event):
         """
         Initialize devices for all USB cameras to fetch video/ image data from
         Each Camera_Worker process controls its own docket and camera device
         """
-        
-        stop_event = mp.Event()
-        self.stop_workers_event.append(stop_event)
-        
         return CameraWorker(
             host = SERVER_HOST, 
             port = BASE_PORT+device_id,
             device_id = device_id,
             fps = CAMERA_FPS,
-            stop_event = stop_event
+            stop_event = self.stop_event
         )
         
     def is_running(self):
