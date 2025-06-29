@@ -31,7 +31,6 @@ class CameraWorker:
         )
         self.__logger = logging.getLogger(__name__)
         
-        # self.Width = 1080
         
     def run_camera(self):
         """
@@ -119,15 +118,17 @@ class CameraWorker:
 
             # Pack header (timestamp + length)
             header = struct.pack(
-                ">dI",  # Big endian (network endianess), float64, uint32
+                ">dII",  # Big endian (network endianess), float64, uint32, uint32
                 timestamp,
-                length,
+                self.id,
+                length, 
             )
 
             try:
                 # Send header + image to server
                 payload = header + data_to_send
                 self.socket.sendall(payload)
+                # self.__logger.info(f"[Camera-{self.id}] payload sent")
             except (BrokenPipeError, ConnectionResetError):
                 self.__logger.error(f"[Camera-{self.id}] Unable to connect to server")
                 break
