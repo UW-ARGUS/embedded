@@ -1,9 +1,9 @@
 """
-Instantiates CameraDeviceController to capture mutliple camera device data and transmit over TCP socket connections
+Instantiates CameraDeviceManager to capture mutliple camera device data and transmit over TCP socket connections
 """
 import logging
 import time
-from modules.camera_transmitter.camera_device_controller import CameraDeviceController
+from modules.camera_transmitter.camera_device_manager import CameraDeviceManager
 
 if __name__ == "__main__":
     logging.basicConfig(
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     logging.info("Main starting")
 
     try:
-        controller = CameraDeviceController()   
+        controller = CameraDeviceManager()   
         # cam_map=controller.get_usb_ports()
         
         # if not cam_map:

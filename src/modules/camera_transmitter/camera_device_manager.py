@@ -1,3 +1,4 @@
+import time
 import cv2
 import logging
 import socket
@@ -20,7 +21,7 @@ CAMERA_FPS = 90.0   # FPS for streaming
 
 LOG_LEVEL = logging.DEBUG
 
-class CameraDeviceController:
+class CameraDeviceManager:
     """
     Controls and manages multiple Camera_Worker processes for each USB camera connected
     """
@@ -117,15 +118,17 @@ class CameraDeviceController:
             device_path = port[1]
             device_id = int(device_path.replace('/dev/video','')) # Extract device id 
             self.__logger.info(f"device_id: {device_id}, {i},{len(cam_map)}")
+            
+            device_port = BASE_PORT+i
         # for device_id in range(NUM_CAMERAS):
         # for device_id in range(len(cam_map)):
             # Create worker instance (opens camera and creates individual socket)
-            self.__logger.info(f"Starting Camera_worker ({device_id}, {BASE_PORT+i})") # Port is incremented by 1 each time in cam_map
+            self.__logger.info(f"Starting Camera_worker ({device_id}, {device_port})") # Port is incremented by 1 each time in cam_map
             
             # Initialize devices for all USB cameras to fetch video/ image data from. Each Camera_Worker process controls its own socket and camera device
             camera_worker = CameraWorker(
                 host = SERVER_HOST, 
-                port = BASE_PORT+i,
+                port = device_port,
                 device_id = device_id,
                 fps = CAMERA_FPS,
                 stop_event = self.stop_event
@@ -135,7 +138,11 @@ class CameraDeviceController:
             process = mp.Process(target=camera_worker.run_camera, name=f"Worker-{device_id}")
             process.start()
                         
-            self.worker_queue.append(process)            
+            self.worker_queue.append({
+                'process': process,
+                'device_id': device_id,
+                'port': device_port,
+            })            
         
         self.__logger.info(f"All camera workers running {self.worker_queue}")
     
@@ -160,18 +167,6 @@ class CameraDeviceController:
                 # process.join(timeout=1.0)
                 
         self.__logger.info("All Camera_Worker processes terminated")
-    
-    def __init_camera_worker(self, device_id, stop_event):
-        """
-        
-        """
-        return CameraWorker(
-            host = SERVER_HOST, 
-            port = BASE_PORT+device_id,
-            device_id = device_id,
-            fps = CAMERA_FPS,
-            stop_event = self.stop_event
-        )
         
     def is_running(self):
         """
@@ -181,6 +176,33 @@ class CameraDeviceController:
         
         
     # TODO: function to check/poll if any worker process throws error. Maybe auto-restart failed workers X num of times
+    def monitor_workers(self):
+        """
+        Monitors and auto-restarts worker mapping to device id if they crash
+        """
+        while not self.stop_event.is_set():
+            for i, worker_info in enumerate(self.worker_queue):
+                process = worker_info['process']
+                device_id = worker_info['device_id']
+                port = worker_info['port']
+                
+                # Process crashed, create new worker and restart process
+                if not process.is_alive():
+                    self.__logger.warning(f"Worker {process.name} crashed. Restarting...")
 
-
+                    new_worker = CameraWorker(
+                        host=self.SERVER_HOST,
+                        port=port,
+                        device_id=device_id,
+                        fps=self.CAMERA_FPS,
+                        stop_event=self.stop_event
+                    )
+                    
+                    # Start the new process
+                    new_process = mp.Process(target=new_worker.run_camera, name=f"Worker-{device_id}")
+                    new_process.start()
+                    
+                    # Update the worker information to include new process
+                    self.worker_queue[i]['process'] = new_process
+            time.sleep(1)
 
