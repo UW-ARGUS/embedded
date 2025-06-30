@@ -31,7 +31,7 @@ class CameraDeviceManager:
         """
         self.worker_queue = deque() # Store active workers in queue for cleanup process
         self.stop_event = mp.Event() # Shared stop event between all workers to track when should terminate
-        
+                
         logging.basicConfig(
             level=LOG_LEVEL,
             handlers=[logging.StreamHandler()]  # output to console
