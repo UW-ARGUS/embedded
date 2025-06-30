@@ -4,7 +4,7 @@ from imu.imu_worker import IMUWorker
 from imu.imu_shared_data import IMUSharedData
 import logging
 
-class SensorSystemController:
+class SystemController:
     """
     Controls all subsystems including stop events and initialization
     """

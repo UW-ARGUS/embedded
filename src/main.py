@@ -1,9 +1,9 @@
 """
-Instantiates SensorSystemController to read IMU data, capture mutliple camera device data, and transmit over TCP socket connections
+Instantiates SystemController to read IMU data, capture mutliple camera device data, and transmit over TCP socket connections
 """
 import logging
 import time
-from modules.sensor_controller.sensor_system_controller import SensorSystemController
+from embedded.src.modules.system_controller.system_controller import SystemController
 
 import multiprocessing as mp
 
@@ -15,7 +15,7 @@ if __name__ == "__main__":
     logging.info("Main starting")
     
     # Starts main controller for all subsystems (IMU, Camera)
-    controller = SensorSystemController()
+    controller = SystemController()
     controller.start()
 
     try:
