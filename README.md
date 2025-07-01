@@ -40,6 +40,19 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+6. Make sure v4l-utils is installed in order to read the USB port numbers
+```
+sudo apt update
+sudo apt install v4l-utils
+
+or run install_dependencies.sh
+```
+
+Verify using:
+```
+v4l2-ctl --list-devices
+```
+
 ## Teardown
 To deactivate the virtual environment, run the command below.
 ```
