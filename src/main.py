@@ -5,9 +5,7 @@ import logging
 import time
 from embedded.src.modules.system_controller.system_controller import SystemController
 
-import multiprocessing as mp
-
-if __name__ == "__main__":
+if __name__ == "__main__":  
     logging.basicConfig(
         level=logging.DEBUG,
         handlers=[logging.StreamHandler()]  # output to console

@@ -1,3 +1,6 @@
+"""
+Opens specified camera and saves frames to directory with target resolution
+"""
 import cv2
 import os
 import time

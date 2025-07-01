@@ -22,6 +22,7 @@ CAMERA_FPS = 90.0   # FPS for streaming
 LOG_LEVEL = logging.DEBUG
 
 class CameraDeviceManager:
+    USB_REGEX = r'\((usb-[^)]+)\)'
     """
     Controls and manages multiple Camera_Worker processes for each USB camera connected
     """
@@ -54,7 +55,7 @@ class CameraDeviceManager:
             )
         except FileNotFoundError:
             logging.error("v4l2-ctl command not found. Please install v4l-utils.")
-            return {}
+            return None
         except subprocess.CalledProcessError as e:
             # This error can occur if no devices are found, so handle gracefully
             logging.warning("No USB cameras detected or unable to list devices.")
@@ -71,9 +72,9 @@ class CameraDeviceManager:
             # Skip empty lines
             if not line.strip():
                 continue
-
+            
             # New device block
-            match = re.search(r'\((usb-[^)]+)\)', line)
+            match = re.search(self.USB_REGEX, line)
             if match:
                 # If we have a previous camera, save the first video device
                 if current_port and current_devices:

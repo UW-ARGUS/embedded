@@ -1,3 +1,6 @@
+"""
+Test whether fps is set correctly (what was attempted to be set and actual)
+"""
 import cv2, time
 
 # cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
