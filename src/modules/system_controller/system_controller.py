@@ -1,6 +1,6 @@
 import multiprocessing as mp
 from camera_transmitter.camera_device_manager import CameraDeviceManager
-from imu.imu_worker import IMUWorker
+from imu.imu_manager import IMUManager
 from imu.imu_shared_data import IMUSharedData
 import logging
 
@@ -19,6 +19,7 @@ class SystemController:
         self.camera_controller = CameraDeviceManager(
             stop_event=self.stop_event
         )
+        self.imu_controller =IMUManager(stop_event=self.stop_event, imu_data=self.imu_data)
         self.imu_process = None
         self.__logger = logging.getLogger(__name__)
 
@@ -29,14 +30,7 @@ class SystemController:
         self.start_imu_worker()
         self.camera_controller.start_camera_workers()
 
-    def start_imu_worker(self):
-        """
-        Initializes IMU worker using shared memory
-        """
-        imu_worker = IMUWorker(self.stop_event, self.imu_data)
-        self.imu_process = mp.Process(target=imu_worker.run, name="IMU-Worker")
-        self.imu_process.start()
-
+    # TODO: IMU should also create socket and transmit IMU readings to terminal
     def get_imu_reading(self):
         """
         Reads and returns IMU sensor data array (acc, gyro, mag) from shared memory
@@ -44,6 +38,7 @@ class SystemController:
         # print("Accel:", self.imu_data.accel)
         # print("Gyro:", self.imu_data.gyro)
         # print("Mag:", self.imu_data.mag)
+        # see when imu starts and stops moving --> change state to stream lidar data
         return self.imu_data.get()
 
     def is_running(self):

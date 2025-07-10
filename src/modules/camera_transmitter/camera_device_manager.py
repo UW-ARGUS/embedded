@@ -33,13 +33,9 @@ class CameraDeviceManager:
         self.worker_queue = deque() # Store active workers in queue for cleanup process
         self.stop_event = mp.Event() # Shared stop event between all workers to track when should terminate
                 
-        logging.basicConfig(
-            level=LOG_LEVEL,
-            handlers=[logging.StreamHandler()]  # output to console
-        )
         self.__logger = logging.getLogger(__name__)
 
-    def get_usb_ports(self):
+    def __get_usb_ports(self):
         """
         Use `v4l2-ctl --list-devices` to find USB cameras and map USB port numbers to /dev/video devices.
         If no cameras are connected or if the command fails, logs a warning and returns an empty dict.
@@ -109,7 +105,7 @@ class CameraDeviceManager:
         """
         self.__logger.info("Starting camera workers")
         
-        cam_map = self.get_usb_ports()
+        cam_map = self.__get_usb_ports()
         for port, dev in cam_map.items():
             self.__logger.info(f"USB port {port} -> {dev}")
         
@@ -134,6 +130,8 @@ class CameraDeviceManager:
                 fps = CAMERA_FPS,
                 stop_event = self.stop_event
             )
+            
+            camera_worker = CameraWorker(host = SERVER_HOST, port = device_port, device_id = device_id, fps = CAMERA_FPS, stop_event = self.stop_event)
             
             # Start new process and add to queue
             process = mp.Process(target=camera_worker.run_camera, name=f"Worker-{device_id}")

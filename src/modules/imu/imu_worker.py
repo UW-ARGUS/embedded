@@ -43,7 +43,10 @@ class IMUWorker:
             self.__logger.error(f"[IMUWorker] Error: {e}")
         finally:
             self.__logger.info("IMUWorker exiting")
+            
+    def stop_imu(self):
+        self.stop_event.set()
     
     def __del__(self):
-        self.stop_event.set()
-    #     self.imu_process.join()
+        self.stop_imu()
+
