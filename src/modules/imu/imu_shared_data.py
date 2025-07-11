@@ -1,14 +1,17 @@
 from collections import namedtuple
 
+
 class IMUSharedData:
     """
-    Wraps shared memory array for IMU data. Accel, gyro, mag tuples used by systems to trigger for state changes, filtering, etc.
+    Wraps shared memory array for IMU data.
+    Accel, gyro, mag tuples used by systems to trigger for state changes, filtering, etc.
     """
-    IMUReading = namedtuple('IMUReading', ['accel', 'gyro', 'mag'])
+
+    IMUReading = namedtuple("IMUReading", ["accel", "gyro", "mag"])
 
     def __init__(self, shared_array):
         self.shared_array = shared_array
-        
+
     def get(self):
         """
         To safely access and read shared IMU data

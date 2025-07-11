@@ -1,22 +1,23 @@
 import time
 import logging
-import multiprocessing as mp
 import board
 import busio
 import adafruit_icm20x
+
 
 class IMUWorker:
     """
     IMU data processing for local sensing and to help change states
     """
+
     def __init__(self, stop_event, shared_data):
         """
-        shared_data is a multiprocessing Array of doubles that can hold 9 values (eg. mp.Array('d',9))
-        stop_event is a multiprocessing event
+        shared_data: multiprocessing Array of doubles that can hold 9 values (eg. mp.Array('d',9))
+        stop_event: multiprocessing event
         """
-        # IMU reading done in its own process so that it can continuously poll sensor data without blocking camera workers
+        # IMU reading done in its own process to continuously poll sensor data without blocking camera workers
         self.stop_event = stop_event
-        
+
         # Shared message queue so latest sensor readings and states are tracked and updated to trigger events
         self.shared_data = shared_data
         self.__logger = logging.getLogger(__name__)
@@ -43,10 +44,9 @@ class IMUWorker:
             self.__logger.error(f"[IMUWorker] Error: {e}")
         finally:
             self.__logger.info("IMUWorker exiting")
-            
+
     def stop_imu(self):
         self.stop_event.set()
-    
+
     def __del__(self):
         self.stop_imu()
-

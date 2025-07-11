@@ -4,27 +4,27 @@ from imu.imu_manager import IMUManager
 from imu.imu_shared_data import IMUSharedData
 import logging
 
+
 class SystemController:
     """
     Controls all subsystems including stop events and initialization
     """
+
     def __init__(self):
         self.stop_event = mp.Event()
 
         # Initialize imu data and setup shared memory
-        self.imu_shared_array = mp.Array('d', 9)
+        self.imu_shared_array = mp.Array("d", 9)
         self.imu_data = IMUSharedData(self.imu_shared_array)
 
         # Create controller for subsystems
-        self.camera_controller = CameraDeviceManager(
-            stop_event=self.stop_event
-        )
-        self.imu_controller =IMUManager(stop_event=self.stop_event, imu_data=self.imu_data)
+        self.camera_controller = CameraDeviceManager(stop_event=self.stop_event)
+        self.imu_controller = IMUManager(stop_event=self.stop_event, imu_data=self.imu_data)
         self.imu_process = None
         self.__logger = logging.getLogger(__name__)
 
     def start(self):
-        """ 
+        """
         Start all subsystems (IMU, camera)
         """
         self.start_imu_worker()
@@ -54,15 +54,15 @@ class SystemController:
         Stops all subsystem processes if event triggered
         """
         self.stop_event.set()
-        
+
         # Stop all camera workers
         self.__logger.debug("Stopping camera workers")
         self.camera_controller.stop_workers()
-        
+
         self.__logger.debug("Stopping IMU process")
         if self.imu_process:
             self.imu_process.join(timeout=1.0)
             if self.imu_process.is_alive():
                 self.imu_process.terminate()
-        
+
         self.__logger.debug("All processes terminated")

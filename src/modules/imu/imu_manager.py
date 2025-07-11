@@ -1,6 +1,7 @@
 import multiprocessing as mp
 from imu_worker import IMUWorker
 
+
 class IMUManager:
     def start_imu_worker(self, imu_data):
         """
@@ -9,7 +10,7 @@ class IMUManager:
         self.imu_worker = IMUWorker(self.stop_event, imu_data)
         self.imu_process = mp.Process(target=self.imu_worker.run, name="IMU-Worker")
         self.imu_process.start()
-        
+
     def stop_workers(self):
         """
         Stops all activate camera processes and terminates gracefully

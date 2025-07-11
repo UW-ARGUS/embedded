@@ -1,7 +1,9 @@
 """
 Test whether fps is set correctly (what was attempted to be set and actual)
 """
-import cv2, time
+
+import cv2
+import time
 
 # cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
 cap = cv2.VideoCapture("/dev/video0", cv2.CAP_V4L2)

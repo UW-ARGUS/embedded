@@ -7,7 +7,10 @@ import time
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def capture_frames_at_high_fps(device_id=0, save_dir="./test/2025_06_27/cf_motion2", max_frames=50, target_fps=90):
+
+def capture_frames_at_high_fps(
+    device_id=0, save_dir="./test/2025_06_27/cf_motion2", max_frames=50, target_fps=90
+):
     os.makedirs(save_dir, exist_ok=True)
 
     cap = cv2.VideoCapture(device_id)
@@ -49,6 +52,7 @@ def capture_frames_at_high_fps(device_id=0, save_dir="./test/2025_06_27/cf_motio
 
     cap.release()
     logger.info("Done capturing frames. Camera released.")
+
 
 if __name__ == "__main__":
     capture_frames_at_high_fps()
