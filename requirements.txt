@@ -1,3 +1,8 @@
 # Packages listed in alphabetical order
 numpy
 opencv-python
+
+# IMU
+adafruit-circuitpython-busdevice
+adafruit-circuitpython-icm20x
+adafruit-blinka

@@ -1,3 +1,7 @@
+"""
+Test whether fps is set correctly (what was attempted to be set and actual)
+"""
+
 import cv2
 import time
 
