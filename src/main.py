@@ -5,7 +5,7 @@ Transmits over TCP socket connections
 
 import logging
 import time
-from embedded.src.modules.system_controller.system_controller import SystemController
+from modules.system_controller.system_controller import SystemController
 
 if __name__ == "__main__":
     logging.basicConfig(
