@@ -25,9 +25,20 @@ class IMUWorker:
     def run(self):
         try:
             # Intiailizie ICM 20948 IMU
-            i2c = busio.I2C(board.SCL, board.SDA)
-            sensor = adafruit_icm20x.ICM20948(i2c)
-            self.__logger.info("IMU sensor initialized")
+            # i2c = busio.I2C(board.SCL, board.SDA)
+            i2c = board.I2C()  # uses board.SCL and board.SDA
+
+            self.__logger.debug("Setup i2c board clock and data")
+            # time.sleep(1)
+
+            try:
+                sensor = adafruit_icm20x.ICM20948(i2c, address=0x69)
+                self.__logger.debug("IMU initialized")
+            except ValueError as e:
+                self.__logger.error(f"No I2C device found at the given address: {e}")
+
+            # sensor = adafruit_icm20x.ICM20948(i2c)
+            # self.__logger.info("IMU sensor initialized")
 
             # Run until stop event triggered
             while not self.stop_event.is_set():
@@ -38,6 +49,8 @@ class IMUWorker:
 
                 # Atomically update shared_data
                 self.shared_data.set(accel, gyro, mag)
+                # self.shared_data.print()
+                # time.sleep(0.5)
 
                 time.sleep(0.02)  # 50 Hz reading
         except Exception as e:
