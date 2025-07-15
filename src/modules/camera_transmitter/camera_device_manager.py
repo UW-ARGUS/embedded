@@ -13,7 +13,7 @@ from .camera_worker import CameraWorker
 # TODO: Move constants to .yaml file
 NUM_CAMERAS = 4  # Num cameras connected to RPI
 BASE_PORT = 5000  # Base port for the TCP socket transmissions
-SERVER_HOST = "192.168.194.44"  # Update value with base station IP address
+SERVER_HOST = "192.168.194.44" # "192.168.194.189"  # Update value with base station IP address
 CAMERA_FPS = 90.0  # FPS for streaming
 
 LOG_LEVEL = logging.DEBUG
@@ -25,7 +25,7 @@ class CameraDeviceManager:
     Controls and manages multiple Camera_Worker processes for each USB camera connected
     """
 
-    def __init__(self):
+    def __init__(self, stop_event):
         """
         Initializes Camera Device Controller which manages and handles all of the worker processes
         """
@@ -34,6 +34,7 @@ class CameraDeviceManager:
             mp.Event()
         )  # Shared stop event between all workers to track when should terminate
 
+        # self.stop_event = stop_event
         self.__logger = logging.getLogger(__name__)
 
     def __get_usb_ports(self):

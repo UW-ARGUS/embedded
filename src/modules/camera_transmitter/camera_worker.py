@@ -38,7 +38,7 @@ class CameraWorker:
             self.__setup_socket()
             self.__stream_frames()
         except Exception as e:
-            self.__logger.error(f"Camera-{self.id}] Error: {e}")
+            self.__logger.exception(f"Camera-{self.id}] Error: {e}")
         finally:
             self.__del__()
 
@@ -65,7 +65,7 @@ class CameraWorker:
 
         # Initialize network connection
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.settimeout(10.0)
+        self.socket.settimeout(60.0)
 
         try:
             self.__logger.info(f"Connecting to {self.host}:{self.port}")
@@ -135,6 +135,9 @@ class CameraWorker:
         """
         Releases camera and socket resources
         """
+        self.__logger.info(f"[Camera-{self.id}] Releasing socket")
+
+        
         if self.camera:
             self.camera.release()
         if self.socket:
@@ -143,6 +146,8 @@ class CameraWorker:
                 self.socket_instance.shutdown(socket.SHUT_RDWR)
             except Exception:
                 pass
+            
+            self.__logger.info(f"[Camera-{self.id}] Closing socket")
 
             # Close and release the socket
             self.socket.close()
