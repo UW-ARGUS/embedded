@@ -1,7 +1,7 @@
 import multiprocessing as mp
-from camera_transmitter.camera_device_manager import CameraDeviceManager
-from imu.imu_manager import IMUManager
-from imu.imu_shared_data import IMUSharedData
+from ..camera_transmitter.camera_device_manager import CameraDeviceManager
+from ..imu.imu_manager import IMUManager
+from ..imu.imu_shared_data import IMUSharedData
 import logging
 
 
@@ -27,7 +27,7 @@ class SystemController:
         """
         Start all subsystems (IMU, camera)
         """
-        self.start_imu_worker()
+        self.imu_controller.start_imu_worker(self.imu_data)
         self.camera_controller.start_camera_workers()
 
     # TODO: IMU should also create socket and transmit IMU readings to terminal

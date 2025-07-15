@@ -6,3 +6,6 @@ opencv-python
 adafruit-circuitpython-busdevice
 adafruit-circuitpython-icm20x
 adafruit-blinka
+
+rpi-lgpio
+smbus2
