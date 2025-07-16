@@ -19,10 +19,23 @@ if __name__ == "__main__":
 
     try:
         while controller.is_running():
+            # Read current IMU data
+            # imu_reading = controller.get_imu_reading()
+            controller.imu_data.print()
+
+            # Poll IMU to check if it reports stationary state
+            stationary = controller.imu_data.is_stationary()
+
+            if stationary:
+                logging.info("IMU is stationary")
+                # TODO: Trigger mapping or change button colour
+            else:
+                logging.info("IMU is moving")
             time.sleep(1)
 
     except KeyboardInterrupt:
         logging.info("Process interrupted by user")
     finally:
-        logging.debug("All workers have stopped unexpectedly!")
+        logging.debug("Stopping all subsystem workers")
         controller.stop()
+        logging.debug("All processes stopped")

@@ -3,6 +3,7 @@ from ..camera_transmitter.camera_device_manager import CameraDeviceManager
 from ..imu.imu_manager import IMUManager
 from ..imu.imu_shared_data import IMUSharedData
 import logging
+from collections import deque
 
 
 class SystemController:
@@ -11,6 +12,7 @@ class SystemController:
     """
 
     def __init__(self):
+        self.__logger = logging.getLogger(__name__)
         self.stop_event = mp.Event()
 
         # Initialize imu data and setup shared memory
@@ -20,13 +22,17 @@ class SystemController:
         # Create controller for subsystems
         self.camera_controller = CameraDeviceManager(stop_event=self.stop_event)
         self.imu_controller = IMUManager(stop_event=self.stop_event, imu_data=self.imu_data)
+        
+        self.stationary_window = deque(maxlen=5) # Buffer to make sure IMU state is stationary
+        self.device_state = "MOVING"
+
         self.imu_process = None
-        self.__logger = logging.getLogger(__name__)
 
     def start(self):
         """
         Start all subsystems (IMU, camera)
         """
+        self.__logger.info("\nStarting IMU and camera workers")
         self.imu_controller.start_imu_worker(self.imu_data)
         self.camera_controller.start_camera_workers()
 
@@ -35,9 +41,6 @@ class SystemController:
         """
         Reads and returns IMU sensor data array (acc, gyro, mag) from shared memory
         """
-        # print("Accel:", self.imu_data.accel)
-        # print("Gyro:", self.imu_data.gyro)
-        # print("Mag:", self.imu_data.mag)
         # see when imu starts and stops moving --> change state to stream lidar data
         return self.imu_data.get()
 
@@ -46,7 +49,7 @@ class SystemController:
         Checks and returns if all systems are still running
         """
         cam_alive = self.camera_controller.is_running()
-        imu_alive = self.imu_process.is_alive() if self.imu_process else False
+        imu_alive = self.imu_controller.is_running()
         return cam_alive or imu_alive
 
     def stop(self):
@@ -60,9 +63,34 @@ class SystemController:
         self.camera_controller.stop_workers()
 
         self.__logger.debug("Stopping IMU process")
-        if self.imu_process:
-            self.imu_process.join(timeout=1.0)
-            if self.imu_process.is_alive():
-                self.imu_process.terminate()
+        self.imu_controller.stop_workers()
 
         self.__logger.debug("All processes terminated")
+
+    def monitor_system_status():
+        """
+        Loop to detect if device is stationary
+        """
+        self.__logger.info("Monitoring system")
+
+        try:
+            while not self.stop_event.is_set():
+                is_stationary = self.imu_data.is_stationary()
+                self.stationary_window.append(is_stationary)
+
+                # Checks that all entries in the specified window is stationary to confirm state change
+                if all(self.stationary_window) and self.device_state != "STATIONARY":
+                    self.device_state = "STATIONARY"
+                    self.__logger.info("Device STATIONARY --> triggering state change, starting mapping")
+
+                # Checks that all entries in the specified window is moving to confirm state change
+                elif not all(self.stationary_window) and self.device_state != "MOVING":
+                    self.device_state = "MOVING"
+                    self.__logger.info("Motion detected --> resetting state")
+
+                time.sleep(0.5)
+
+        except KeyboardInterrupt:
+            self.__logger.warning("System loop interrupted by user")
+        finally:
+            self.stop()

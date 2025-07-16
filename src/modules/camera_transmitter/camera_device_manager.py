@@ -7,16 +7,26 @@ import re
 import multiprocessing as mp
 
 from collections import deque
+from dataclasses import dataclass
 
 from .camera_worker import CameraWorker
 
 # TODO: Move constants to .yaml file
 NUM_CAMERAS = 4  # Num cameras connected to RPI
 BASE_PORT = 5000  # Base port for the TCP socket transmissions
-SERVER_HOST = "192.168.194.189"  #"192.168.194.44" #   # Update value with base station IP address
+SERVER_HOST = "192.168.2.208"  #  "192.168.194.189"  #"192.168.194.44" #   # Update value with base station IP address
 CAMERA_FPS = 90.0  # FPS for streaming
 
 LOG_LEVEL = logging.DEBUG
+
+@dataclass
+class CameraWorkerInfo:
+    """
+    Worker queue info
+    """
+    process: mp.Process
+    device_id: int
+    port: int
 
 
 class CameraDeviceManager:
@@ -36,6 +46,7 @@ class CameraDeviceManager:
 
         # self.stop_event = stop_event
         self.__logger = logging.getLogger(__name__)
+        self.camera_map = {}  # List of usb camera devices connected
 
     def __get_usb_ports(self):
         """
@@ -106,8 +117,8 @@ class CameraDeviceManager:
         self.__logger.info("Starting camera workers")
 
         cam_map = self.__get_usb_ports()
-        for port, dev in cam_map.items():
-            self.__logger.info(f"USB port {port} -> {dev}")
+        # for port, dev in cam_map.items():
+        #     self.__logger.info(f"USB port {port} -> {dev}")
 
         # Manually get USB device port numbers, only starting cameras actually connected
         for i, port in enumerate(cam_map.items()):
@@ -117,6 +128,7 @@ class CameraDeviceManager:
             self.__logger.info(f"device_id: {device_id}, {i},{len(cam_map)}")
 
             device_port = BASE_PORT + i
+            self.__logger.info(f"USB port {port} -> {device_path}")
 
             # Create worker instance (opens camera and creates individual socket)
             self.__logger.info(
@@ -137,15 +149,14 @@ class CameraDeviceManager:
             process = mp.Process(target=camera_worker.run_camera, name=f"Worker-{device_id}")
             process.start()
 
-            self.worker_queue.append(
-                {
-                    "process": process,
-                    "device_id": device_id,
-                    "port": device_port,
-                }
+            self.worker_queue.append(CameraWorkerInfo(
+                    process=process,
+                    device_id=device_id,
+                    port=device_port,
+                )
             )
 
-        self.__logger.info(f"All camera workers running {self.worker_queue}")
+        self.__logger.info(f"All camera workers running {[w.process.name for w in self.worker_queue]}")
 
     def stop_workers(self):
         """
@@ -155,23 +166,21 @@ class CameraDeviceManager:
         # Tells each worker to exit the stream_data loop
         self.stop_event.set()
 
-         # Join all processes
+         # Try to join all processes
         for worker in self.worker_queue:
-            process = worker["process"]
-            if process.is_alive():
-                process.join() # TODO: See if need timeout=5.0
+            if worker.process.is_alive():
+                worker.process.join() # TODO: See if need timeout=5.0
 
-        self.__logger.info("All workers stopped")
+        self.__logger.info("All workers joined")
 
-        # Terminate any remaining alive workers
-        while self.worker_queue:
-            worker = self.worker_queue.popleft()
-            process = worker["process"]
-            if process.is_alive():
+        # Force terminate and cleanup any remaining alive workers
+        for worker in self.worker_queue:
+            if worker.process.is_alive():
                 self.__logger.warning(f"Terminating Camera_Worker {worker['device_id']}")
-                process.terminate()
-                # process.join(timeout=1.0)
+                worker.process.terminate()
+                # worker.process.join(timeout=1.0)
 
+        self.worker_queue.clear()
         self.__logger.info("All Camera_Worker processes terminated")
 
     def is_running(self):
@@ -179,7 +188,7 @@ class CameraDeviceManager:
         Check if there are any workers still alive
         Useful for determining if processes were terminated unexpectedly
         """
-        return any(worker["process"].is_alive() for worker in self.worker_queue)
+        return any(worker.process.is_alive() for worker in self.worker_queue)
 
 
     # TODO: function to check/poll if any worker process throws error
@@ -190,17 +199,17 @@ class CameraDeviceManager:
         """
         while not self.stop_event.is_set():
             for i, worker_info in enumerate(self.worker_queue):
-                process = worker_info["process"]
-                device_id = worker_info["device_id"]
-                port = worker_info["port"]
+                process = worker_info.process
+                device_id = worker_info.device_id
 
                 # Process crashed, create new worker and restart process
                 if not process.is_alive():
+                    worker_info = self.worker_queue[i]
                     self.__logger.warning(f"Worker {process.name} crashed. Restarting...")
 
                     new_worker = CameraWorker(
                         host=self.SERVER_HOST,
-                        port=port,
+                        port=worker_info.port,
                         device_id=device_id,
                         fps=self.CAMERA_FPS,
                         stop_event=self.stop_event,
@@ -213,5 +222,5 @@ class CameraDeviceManager:
                     new_process.start()
 
                     # Update the worker information to include new process
-                    self.worker_queue[i]["process"] = new_process
+                    worker_info.process=new_process
             time.sleep(1)
