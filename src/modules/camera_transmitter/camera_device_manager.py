@@ -13,7 +13,7 @@ from .camera_worker import CameraWorker
 # TODO: Move constants to .yaml file
 NUM_CAMERAS = 4  # Num cameras connected to RPI
 BASE_PORT = 5000  # Base port for the TCP socket transmissions
-SERVER_HOST = "192.168.194.44" # "192.168.194.189"  # Update value with base station IP address
+SERVER_HOST = "192.168.194.189"  #"192.168.194.44" #   # Update value with base station IP address
 CAMERA_FPS = 90.0  # FPS for streaming
 
 LOG_LEVEL = logging.DEBUG
@@ -155,15 +155,20 @@ class CameraDeviceManager:
         # Tells each worker to exit the stream_data loop
         self.stop_event.set()
 
+         # Join all processes
         for worker in self.worker_queue:
-            worker.join()
+            process = worker["process"]
+            if process.is_alive():
+                process.join() # TODO: See if need timeout=5.0
+
         self.__logger.info("All workers stopped")
 
+        # Terminate any remaining alive workers
         while self.worker_queue:
-            process: mp.Process = self.worker_queue.popleft()
-            self.__logger.info(f"process: {process.is_alive()}")
+            worker = self.worker_queue.popleft()
+            process = worker["process"]
             if process.is_alive():
-                self.__logger.info(f"Terminating {process.name}")
+                self.__logger.warning(f"Terminating Camera_Worker {worker['device_id']}")
                 process.terminate()
                 # process.join(timeout=1.0)
 
@@ -174,7 +179,8 @@ class CameraDeviceManager:
         Check if there are any workers still alive
         Useful for determining if processes were terminated unexpectedly
         """
-        return any(p.is_alive() for p in self.worker_queue)
+        return any(worker["process"].is_alive() for worker in self.worker_queue)
+
 
     # TODO: function to check/poll if any worker process throws error
     # Maybe auto-restart failed workers X num of times
