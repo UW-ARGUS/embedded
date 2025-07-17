@@ -6,6 +6,8 @@ Transmits over TCP socket connections
 import logging
 import time
 from modules.system_controller.system_controller import SystemController
+from modules.arming_button.button import ArmingButton
+from modules.device_state import DeviceState
 
 if __name__ == "__main__":
     logging.basicConfig(
@@ -13,24 +15,26 @@ if __name__ == "__main__":
     )
     logging.info("Main starting")
 
+    arming_btn = ArmingButton()
+
     # Starts main controller for all subsystems (IMU, Camera)
     controller = SystemController()
-    controller.start()
+
+    # Default: DISARMED, red
+    arming_btn.wait_for_press()  # Wait for button press before starting sensors
+    controller.start()  # Start camera and IMU workers
 
     try:
         while controller.is_running():
             # Read current IMU data
             # imu_reading = controller.get_imu_reading()
-            controller.imu_data.print()
+            # controller.imu_data.print()
 
             # Poll IMU to check if it reports stationary state
-            stationary = controller.imu_data.is_stationary()
-
-            if stationary:
-                logging.info("IMU is stationary")
-                # TODO: Trigger mapping or change button colour
-            else:
-                logging.info("IMU is moving")
+            if arming_btn.state != DeviceState.STATIONARY and controller.imu_data.is_stationary():
+                # Set colour to blue when IMU is stationary, trigger mapping
+                arming_btn.update_state(DeviceState.STATIONARY)
+                logging.info("Device is stationary")
             time.sleep(1)
 
     except KeyboardInterrupt:

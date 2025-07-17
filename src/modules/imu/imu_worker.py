@@ -62,6 +62,7 @@ class IMUWorker:
 
                 # Print calibrated values for debugging
                 # self.shared_data.print()
+                # self.shared_data.print_raw()
                 # payload = self.__pack_binary_imu_data()
                 # self.__logger.debug(f"binary struct payload: {payload}") # print payload for debuggin
 
@@ -84,6 +85,7 @@ class IMUWorker:
                 self.__logger.error(f"[IMUWorker] Error: {e}")
 
             time.sleep(0.02)  # 50 Hz delay
+            # time.sleep(1)
         self.__logger.info("[IMUWorker] Exiting")
 
     def __setup_socket(self):
@@ -159,7 +161,7 @@ class IMUWorker:
         """
         try:
             # Send raw imu data
-            imu_reading = self.shared_data.get()
+            imu_reading = self.shared_data.get_calibrated()
             state_flag = self.shared_data.get_state().value  # State value (moving: 0, stationary: 1)
             timestamp = time.time()
 
@@ -181,7 +183,7 @@ class IMUWorker:
 
     def __json_imu_data(self):
         # Send raw imu data
-        imu_reading = self.shared_data.get()
+        imu_reading = self.shared_data.get_calibrated()
 
         # Convert to dict with accel, gyro, mag, and time values
         data = {

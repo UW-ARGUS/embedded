@@ -5,6 +5,7 @@ from ..imu.imu_shared_data import IMUSharedData
 import logging
 from collections import deque
 
+from ..device_state import DeviceState
 
 class SystemController:
     """
@@ -24,7 +25,8 @@ class SystemController:
         self.imu_controller = IMUManager(stop_event=self.stop_event, imu_data=self.imu_data)
         
         self.stationary_window = deque(maxlen=5) # Buffer to make sure IMU state is stationary
-        self.device_state = "MOVING"
+        # self.device_state = "MOVING"
+        self.device_state = DeviceState.MOVING
 
         self.imu_process = None
 
@@ -79,13 +81,13 @@ class SystemController:
                 self.stationary_window.append(is_stationary)
 
                 # Checks that all entries in the specified window is stationary to confirm state change
-                if all(self.stationary_window) and self.device_state != "STATIONARY":
-                    self.device_state = "STATIONARY"
+                if all(self.stationary_window) and self.device_state != DeviceState.STATIONARY:
+                    self.device_state = DeviceState.STATIONARY
                     self.__logger.info("Device STATIONARY --> triggering state change, starting mapping")
 
                 # Checks that all entries in the specified window is moving to confirm state change
-                elif not all(self.stationary_window) and self.device_state != "MOVING":
-                    self.device_state = "MOVING"
+                elif not all(self.stationary_window) and self.device_state != DeviceState.MOVING:
+                    self.device_state = DeviceState.MOVING
                     self.__logger.info("Motion detected --> resetting state")
 
                 time.sleep(0.5)
@@ -94,3 +96,10 @@ class SystemController:
             self.__logger.warning("System loop interrupted by user")
         finally:
             self.stop()
+
+    def update_state_from_imu(self, is_stationary):
+        if self.state in [DeviceState.ARMED, DeviceState.MOVING, DeviceState.STATIONARY]:
+            if is_stationary and self.state != DeviceState.STATIONARY:
+                self.set_state(DeviceState.STATIONARY)
+            elif not is_stationary and self.state != DeviceState.MOVING:
+                self.set_state(DeviceState.MOVING)
