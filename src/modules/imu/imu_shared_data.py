@@ -1,5 +1,10 @@
 import logging
 from collections import namedtuple
+from enum import Enum
+
+class State(Enum):
+    Moving = 0
+    Stationary = 1
 
 
 class IMUSharedData:
@@ -18,7 +23,7 @@ class IMUSharedData:
     # Calibration values (from running calibrate_imu.py)
     ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z = -0.04070142822265625, 4.015076184082031, -8.553285430908204
     GYRO_OFFSET_X, GYRO_OFFSET_Y, GYRO_OFFSET_Z = 0.004529862305343512, -0.010658499541984735, 0.013589586916030535
-
+    
 
     def __init__(self, shared_array):
         self.shared_array = shared_array
@@ -33,6 +38,12 @@ class IMUSharedData:
             gyro = tuple(self.shared_array[3:6])
             mag = tuple(self.shared_array[6:9])
         return self.IMUReading(accel, gyro, mag)
+    
+    def get_state(self):
+        if self.is_stationary():
+            return State.Stationary
+        else:
+            return State.Moving
 
     def set(self, accel, gyro, mag):
         """
@@ -47,19 +58,11 @@ class IMUSharedData:
         """
         Print formatted acceleration, gyro, and magnetometer values
         """
-        acc_x, acc_y, acc_z = self.shared_array[0:3]
-        gyro_x, gyro_y, gyro_z = self.shared_array[3:6]
         # Note: accel Z is gravity
-        # self.__logger.debug(f"accel: {self.shared_array[0:3]}")
-
         # Raw values
-        # self.__logger.debug("Accel: X:{:.2f}, Y: {:.2f}, Z: {:.2f} m/s^2".format(*self.shared_array[0:3]))
-        # self.__logger.debug("Gyro: X:{:.2f}, Y: {:.2f}, Z: {:.2f} rads/s".format(*self.shared_array[3:6]))
-        # self.__logger.debug("Mag: X:{:.2f}, Y: {:.2f}, Z: {:.2f} uT\n".format(*self.shared_array[6:9]))
-
-        # Calibrated values
         self.__logger.debug("Accel: X:{:.2f}, Y: {:.2f}, Z: {:.2f} m/s^2".format(*self.shared_array[0:3]))
         self.__logger.debug("Gyro: X:{:.2f}, Y: {:.2f}, Z: {:.2f} rads/s".format(*self.shared_array[3:6]))
+        self.__logger.debug("Mag: X:{:.2f}, Y: {:.2f}, Z: {:.2f} uT\n".format(*self.shared_array[6:9]))
 
     def print(self):
         """

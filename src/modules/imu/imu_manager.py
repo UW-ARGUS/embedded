@@ -4,6 +4,8 @@ from .imu_worker import IMUWorker
 
 
 class IMUManager:
+    HOST="192.168.194.44"  # Base station IP
+    PORT=6000
     def __init__(self, stop_event, imu_data):
         """
         Initializes IMU Manager which manages and handles the IMU worker process
@@ -23,7 +25,11 @@ class IMUManager:
         """
         Initializes IMU worker using shared memory
         """
-        self.imu_worker = IMUWorker(self.stop_event, imu_data)
+        self.imu_worker = IMUWorker(
+            host=self.HOST,
+            port=self.PORT,         
+            stop_event=self.stop_event, 
+            shared_data=imu_data)
         self.imu_process = mp.Process(target=self.imu_worker.run, name="IMU-Worker")
         self.imu_process.start()
 

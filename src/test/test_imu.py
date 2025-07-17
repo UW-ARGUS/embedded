@@ -11,6 +11,12 @@ import adafruit_icm20x
 import board
 import busio
 
+import sys
+import os
+
+# Add parent directory of "modules" to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from modules.imu.imu_shared_data import IMUSharedData
 from modules.imu.imu_manager import IMUManager
 
@@ -30,9 +36,13 @@ if __name__ == "__main__":
         imu_manager.start_imu_worker(imu_data)
 
         while True:
-            logging.debug("test")
-            imu_data.print()
             time.sleep(1)
+
+        # while True:
+        #     logging.debug("test")
+        #     imu_data.print()
+        #     logging.debug(f"State value: {imu_data.get_state().name}: {imu_data.get_state().value}")
+        #     time.sleep(1)
     except KeyboardInterrupt:
         logging.info("Process interrupted by user")
     finally:
