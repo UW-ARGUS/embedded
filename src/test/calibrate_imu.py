@@ -1,6 +1,8 @@
 """
 Tests I2C connection and help calibrate IMU values for setup
 """
+import os
+import sys
 
 import logging
 import multiprocessing as mp
@@ -10,6 +12,9 @@ import time
 import adafruit_icm20x
 import board
 import busio
+
+# Add parent directory of "modules" to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from modules.imu.imu_shared_data import IMUSharedData
 from modules.imu.imu_manager import IMUManager

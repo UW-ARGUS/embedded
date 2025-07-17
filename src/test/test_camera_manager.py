@@ -1,10 +1,16 @@
 """
 Instantiates CameraDeviceController to capture mutliple camera device data and transmit over TCP socket connections
 """
+import os
+import sys
 
 import logging
-from modules.camera_transmitter.camera_device_manager import CameraDeviceManager
 import multiprocessing as mp
+
+# Add parent directory of "modules" to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from modules.camera_transmitter.camera_device_manager import CameraDeviceManager
 
 if __name__ == "__main__":
     logging.basicConfig(

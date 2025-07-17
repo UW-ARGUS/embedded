@@ -13,7 +13,6 @@ class IMUWorker:
     IMU data processing for local sensing and to help change states
     """
     SOCKET_RETRY_WINDOW = 5
-    HEADER = b'IMU\x00'  # IMU 4-byte header for binary packets
 
     def __init__(self, host, port, stop_event, shared_data, send_mode="json"):
         """
@@ -63,11 +62,11 @@ class IMUWorker:
 
                 # Print calibrated values for debugging
                 # self.shared_data.print()
-                payload = self.__pack_binary_imu_data()
-                self.__logger.debug(f"binary struct payload: {payload}") # print payload for debuggin
+                # payload = self.__pack_binary_imu_data()
+                # self.__logger.debug(f"binary struct payload: {payload}") # print payload for debuggin
 
-                json_data = self.__json_imu_data()
-                self.__logger.debug(f"json payload: {json_data}") # print payload for debugging
+                # json_data = self.__json_imu_data()
+                # self.__logger.debug(f"json payload: {json_data}") # print payload for debugging
 
                 # Check if socket is connected. If not, attempt to reconnect every interval (SOCKET_RETRY_WINDOW)
                 # Send data if socket exists
