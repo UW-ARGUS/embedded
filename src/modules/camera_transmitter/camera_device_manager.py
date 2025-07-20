@@ -14,7 +14,7 @@ from .camera_worker import CameraWorker
 # TODO: Move constants to .yaml file
 NUM_CAMERAS = 4  # Num cameras connected to RPI
 BASE_PORT = 5000  # Base port for the TCP socket transmissions
-SERVER_HOST = "192.168.2.208"  #  "192.168.194.189"  #"192.168.194.44" #   # Update value with base station IP address
+SERVER_HOST = "192.168.194.44" # "192.168.194.77" # "192.168.2.208"  #  "192.168.194.189"  #"192.168.194.44" #   # Update value with base station IP address
 CAMERA_FPS = 90.0  # FPS for streaming
 
 LOG_LEVEL = logging.DEBUG
@@ -66,7 +66,7 @@ class CameraDeviceManager:
         except subprocess.CalledProcessError as e:
             # This error can occur if no devices are found, so handle gracefully
             logging.warning("No USB cameras detected or unable to list devices.")
-            logging.debug(f"v4l2-ctl output: {e.output}")
+            # logging.debug(f"v4l2-ctl output: {e.output}")
             return {}
 
         output = result.stdout

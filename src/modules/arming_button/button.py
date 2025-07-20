@@ -1,6 +1,7 @@
 import logging
 # from gpiozero import Button, PWMLED
 import RPi.GPIO as GPIO
+import time
 
 # from signal import pause
 from modules.device_state import DeviceState
@@ -25,7 +26,7 @@ class ArmingButton:
         #  cathode
 
         GPIO.setmode(GPIO.BCM)  # Broadcom e.g. GPIO 12
-        GPIO.setup(self.button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # pull up button
+        GPIO.setup(self.button_pin, GPIO.IN) #, pull_up_down=GPIO.PUD_UP)  # pull up button
 
         # Setup GPIO for LED colours and set initially off
         for pin in self.led_pins.values():
@@ -41,7 +42,7 @@ class ArmingButton:
         # Block all events until button is pressed and device armed
         self.__logger.info("Waiting for arming button press...")
         GPIO.wait_for_edge(self.button_pin, GPIO.FALLING)
-        time.sleep(0.2)  # delay for debouncing
+        # time.sleep(0.2)  # delay for debouncing
         self.state = DeviceState.ARMED
         self.set_led_state(self.state)
         self.__logger.info("Button pressed received, system armed")
@@ -51,9 +52,9 @@ class ArmingButton:
         Sets RGB LED colour
         1 = ON, 0 = OFF
         """
-        GPIO.output(self.led_pins["R"], GPIO.HIGH if colour == "RED" else GPIO.LOW)
-        GPIO.output(self.led_pins["G"], GPIO.HIGH if colour == "GREEN" else GPIO.LOW)
-        GPIO.output(self.led_pins["B"], GPIO.HIGH if colour == "BLUE" else GPIO.LOW)
+        GPIO.output(self.led_pins["R"], GPIO.LOW if colour == "RED" else GPIO.HIGH)
+        GPIO.output(self.led_pins["G"], GPIO.LOW if colour == "GREEN" else GPIO.HIGH)
+        GPIO.output(self.led_pins["B"], GPIO.LOW if colour == "BLUE" else GPIO.HIGH)
 
     def set_led_state(self, state: DeviceState):
         """

@@ -36,13 +36,13 @@ if __name__ == "__main__":
         imu_manager.start_imu_worker(imu_data)
 
         while True:
-            time.sleep(1)
-
-        # while True:
-        #     logging.debug("test")
-        #     imu_data.print()
-        #     logging.debug(f"State value: {imu_data.get_state().name}: {imu_data.get_state().value}")
-        #     time.sleep(1)
+            # logging.debug("test")
+            imu_data.print_raw()
+            data = imu_data.get()
+            with open("imu_data_8_short_side_x.txt", "a") as file:
+                file.write(f"{time.time()} - Accel:{data[0]} m/s^2, Gyro: {data[1]}, Mag: {data[2]} \n")
+            # logging.debug(f"State value: {imu_data.get_state().name}: {imu_data.get_state().value}")
+            time.sleep(0.2)
     except KeyboardInterrupt:
         logging.info("Process interrupted by user")
     finally:
