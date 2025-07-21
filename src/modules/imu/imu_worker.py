@@ -13,7 +13,7 @@ class IMUWorker:
     """
     IMU data processing for local sensing and to help change states
     """
-    SOCKET_RETRY_WINDOW = 5
+    SOCKET_RETRY_WINDOW = 10
 
     def __init__(self, host, port, stop_event, shared_data, send_mode="json"):
         """
@@ -87,7 +87,7 @@ class IMUWorker:
         while not self.stop_event.is_set():
             if self.socket is None:
                 self.__retry_socket_conn()
-                self.__logger.debug(f"Attempting to reconnect")
+                # self.__logger.debug(f"Attempting to reconnect")
                 
             # Check if socket is connected. If not, attempt to reconnect every interval (SOCKET_RETRY_WINDOW)
             # Send data if socket exists
@@ -183,7 +183,7 @@ class IMUWorker:
 
         # Initialize network connection
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.settimeout(5.0)
+        self.socket.settimeout(10.0)
 
         try:
             self.__logger.info(f"Connecting to {self.host}:{self.port}")
