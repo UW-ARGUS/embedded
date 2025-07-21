@@ -10,3 +10,4 @@ v4l2-ctl --list-devices
 echo "System dependencies installed."
 
 pip install -r requirements.txt
+echo "Python dependencies installed"
