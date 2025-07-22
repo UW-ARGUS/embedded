@@ -80,8 +80,8 @@ class ArmingButton:
         Sets RGB LED colour
         1 = ON, 0 = OFF
         """
-        GPIO.output(self.led_pins["R"], GPIO.LOW if colour == "RED" else GPIO.HIGH)
-        GPIO.output(self.led_pins["G"], GPIO.LOW if colour == "GREEN" else GPIO.HIGH)
+        GPIO.output(self.led_pins["R"], GPIO.LOW if colour == "RED" or colour == "YELLOW" else GPIO.HIGH)
+        GPIO.output(self.led_pins["G"], GPIO.LOW if colour == "GREEN" or colour == "YELLOW" else GPIO.HIGH)
         GPIO.output(self.led_pins["B"], GPIO.LOW if colour == "BLUE" else GPIO.HIGH)
 
     def set_led_state(self, state: DeviceState):
@@ -94,6 +94,8 @@ class ArmingButton:
             self.set_colour("GREEN")
         elif state == DeviceState.STATIONARY:  # stationary = blue
             self.set_colour("BLUE")
+        elif state == DeviceState.MOVING:
+            self.set_colour("YELLOW")
 
     def update_state(self, new_state: DeviceState):
         """

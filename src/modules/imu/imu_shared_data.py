@@ -14,7 +14,7 @@ class IMUSharedData:
     # Set thresholds for stationary/ no motion detection
     ACCEL_THRESHOLD = 0.5  # Allowable noise for acceleration (m/s^2)
     GRAV_THRESHOLD = 1 # Higher threshold since stationary reading is usually around 8.5
-    GYRO_THRESHOLD = 0.05  # Allowable noise for angular velocity (rads/s)
+    GYRO_THRESHOLD = 0.1  # Allowable noise for angular velocity (rads/s)
     TIME_WINDOW = 1  # Time interval to check for movement (sec)
 
     # Calibration values (from running calibrate_imu.py)
@@ -23,7 +23,11 @@ class IMUSharedData:
     # ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z = -0.04070142822265625, 4.015076184082031, -8.553285430908204
     ACC_OFFSET_X, ACC_OFFSET_Y, ACC_OFFSET_Z = 0,0,0
     GYRO_OFFSET_X, GYRO_OFFSET_Y, GYRO_OFFSET_Z = 0.004529862305343512, -0.010658499541984735, 0.013589586916030535
-    
+    prev_array = {
+            'accel': [0.0, 0.0, 0.0],
+            'gyro': [0.0, 0.0, 0.0],
+            'mag': [0.0, 0.0, 0.0]
+        }
 
     def __init__(self, shared_array):
         self.shared_array = shared_array
@@ -116,8 +120,24 @@ class IMUSharedData:
         self.__logger.info(
             "Magnetometer: X:{:.2f}, Y: {:.2f}, Z: {:.2f} uT\n".format(*mag)
         )
-
+        
     def is_stationary(self):
+        # state is based on if acceleration andd gyrometer change is within threshold
+        accel_diff = [abs(c - p) for c, p in zip(self.shared_array[0:3], self.prev_array['accel'])]
+        gyro_diff = [abs(c - p) for c, p in zip(self.shared_array[3:6], self.prev_array['gyro'])]
+
+        stationary = (max(accel_diff) < self.ACCEL_THRESHOLD and
+                    max(gyro_diff) < self.GYRO_THRESHOLD) 
+
+        # Update previous with current for next check
+        self.prev_array = {
+            'accel': self.shared_array[0:3][:],
+            'gyro': self.shared_array[3:6][:],
+            'mag': self.shared_array[6:9][:]
+        }
+        return stationary
+
+    def is_stationary_offset(self):
         acc_x, acc_y, acc_z = self.shared_array[0:3]
         gyro_x, gyro_y, gyro_z = self.shared_array[3:6]
 
@@ -136,7 +156,6 @@ class IMUSharedData:
         )
 
         return is_acc_zero and is_gyro_zero
-
 
 
     def is_stationary_mag(self):

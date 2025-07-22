@@ -25,19 +25,22 @@ if __name__ == "__main__":
             
     # Once the button is pressed, update the state and start subsystems
     controller.start()  # Start camera and IMU workers
-
+    prev_state = arming_btn.state
     try:
         while controller.is_running():
             # Read current IMU data
             # imu_reading = controller.get_imu_reading()
             # controller.imu_data.print()
+            
+            current_state = controller.imu_data.get_state()
+            
+            # Poll IMU state and update button state accordingly if changed, display state colour on button LED
+            if current_state != prev_state:
+                arming_btn.update_state(current_state)
+                logging.info(f"State updated: {current_state}, {controller.imu_data.is_stationary()}")
+                prev_state = current_state
 
-            # Poll IMU to check if it reports stationary state
-            if arming_btn.state != DeviceState.STATIONARY and controller.imu_data.is_stationary():
-                # Set colour to blue when IMU is stationary, trigger mapping
-                arming_btn.update_state(DeviceState.STATIONARY)
-                logging.info("Device is stationary")
-            time.sleep(1)
+            time.sleep(0.5)
 
     except KeyboardInterrupt:
         logging.info("Process interrupted by user")
