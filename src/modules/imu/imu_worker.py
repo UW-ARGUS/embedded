@@ -6,7 +6,10 @@ import adafruit_icm20x
 import socket
 import struct
 import json
+import numpy as np
+from ahrs.filters import Madgwick
 from multiprocessing import Process
+from scipy.spatial.transform import Rotation as R
 
 
 class IMUWorker:
@@ -14,6 +17,7 @@ class IMUWorker:
     IMU data processing for local sensing and to help change states
     """
     SOCKET_RETRY_WINDOW = 10
+    SAMPLE_PERIOD = 0.02
 
     def __init__(self, host, port, stop_event, shared_data, send_mode="json"):
         """
@@ -35,6 +39,9 @@ class IMUWorker:
         # Shared message queue so latest sensor readings and states are tracked and updated to trigger events
         self.shared_data = shared_data
         
+        self.madgwick_filter = Madgwick(sampleperiod=self.SAMPLE_PERIOD) # Madgwck filter for estimating orientation
+        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0]) # Initial quaternion
+        self.gravity_world = np.array([0.0, 0.0, -9.81]) # Acceleration due to gravity in the world frame
         self.socket_process = None # Background socket process for reconnecting
         self.sensor_process = None # Process for sensor data reading
 
@@ -66,8 +73,10 @@ class IMUWorker:
                 gyro = sensor.gyro
                 mag = sensor.magnetic
 
+                accel_without_gravity = self.__get_acceleration_data_without_gravity(accel, gyro)
+
                 # Atomically update shared memory
-                self.shared_data.set(accel, gyro, mag)
+                self.shared_data.set(accel_without_gravity, gyro, mag)
 
                 # Print calibrated values for debugging
                 # self.shared_data.print()
@@ -77,10 +86,56 @@ class IMUWorker:
 
                 # json_data = self.__json_imu_data()
                 # self.__logger.debug(f"json payload: {json_data}") # print payload for debugging
-                time.sleep(0.02)
+                time.sleep(self.SAMPLE_PERIOD)
                 # time.sleep(1)
             except Exception as e:
                 self.__logger.error(f"Error: {e}")
+    
+    def __get_acceleration_data_without_gravity(
+        self,
+        acceleration_data: tuple[float, float, float],
+        gyroscope_data: tuple[float, float, float],
+    ) -> tuple[float, float, float]:
+        """
+        Removes acceleration due to gravity from the IMU readings.
+
+        Parameters
+        ----------
+        acceleration_data: The measured acceleration data in X, Y, and Z axes.
+        gyroscope_data: The measured angular speed data in X, Y, and Z axes.
+
+        Returns
+        -------
+        tuple(float, float, float): The calibrated acceleration data in X, Y, and Z axes.
+        """
+        # Update the Madgwick filter with IMU data
+        self.quaternion = self.madgwick_filter.updateIMU(
+            self.quaternion,
+            gyroscope_data,
+            acceleration_data,
+        )
+
+        # Convert the quaternion into its corresponding rotation
+        rotation_world_to_body = R.from_quat(
+            [
+                self.quaternion[1],
+                self.quaternion[2],
+                self.quaternion[3],
+                self.quaternion[0],
+            ]
+        )
+
+        # Get the gravity vector in the body coordinate system
+        gravity_body = rotation_world_to_body.apply(self.gravity_world)
+
+        # Get the acceleration data without gravity
+        acceleration_data_without_gravity = (
+            acceleration_data[0] - gravity_body[0],
+            acceleration_data[1] - gravity_body[1],
+            acceleration_data[2] - gravity_body[2],
+        )
+        
+        return acceleration_data_without_gravity
     
     def __handle_socket_comm(self):
         
