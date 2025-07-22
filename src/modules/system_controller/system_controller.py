@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import time
 from ..camera_transmitter.camera_device_manager import CameraDeviceManager
 from ..imu.imu_manager import IMUManager
 from ..imu.imu_shared_data import IMUSharedData
@@ -69,7 +70,7 @@ class SystemController:
 
         self.__logger.debug("All processes terminated")
 
-    def monitor_system_status():
+    def monitor_system_status(self):
         """
         Loop to detect if device is stationary
         """
@@ -98,8 +99,8 @@ class SystemController:
             self.stop()
 
     def update_state_from_imu(self, is_stationary):
-        if self.state in [DeviceState.ARMED, DeviceState.MOVING, DeviceState.STATIONARY]:
-            if is_stationary and self.state != DeviceState.STATIONARY:
+        if self.device_state in [DeviceState.ARMED, DeviceState.MOVING, DeviceState.STATIONARY]:
+            if is_stationary and self.device_state != DeviceState.STATIONARY:
                 self.set_state(DeviceState.STATIONARY)
-            elif not is_stationary and self.state != DeviceState.MOVING:
+            elif not is_stationary and self.device_state != DeviceState.MOVING:
                 self.set_state(DeviceState.MOVING)

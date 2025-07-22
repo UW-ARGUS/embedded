@@ -15,6 +15,7 @@ class ArmingButton:
     def __init__(
         self,
         stop_event=None,
+        polling_interval=0.05
     ):
         self.__logger = logging.getLogger(__name__)
 
@@ -24,9 +25,12 @@ class ArmingButton:
         self.stop_event = stop_event
         
         #  cathode
+        self.polling_interval = polling_interval
+        self.last_button_state = GPIO.HIGH  # Button is unpressed (default state)
+        self.debounce_delay = 0.2  # 200 ms debounce time
 
         GPIO.setmode(GPIO.BCM)  # Broadcom e.g. GPIO 12
-        GPIO.setup(self.button_pin, GPIO.IN) #, pull_up_down=GPIO.PUD_UP)  # pull up button
+        GPIO.setup(self.button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP) # pull up button
 
         # Setup GPIO for LED colours and set initially off
         for pin in self.led_pins.values():
@@ -38,14 +42,38 @@ class ArmingButton:
 
         # TODO: Update so arming button directly changes state of shared memory or triggers state change
 
+    def button_press(self, channel):
+        if GPIO.input(self.button_pin) == GPIO.LOW:
+            self.__logger.info("Button pressed")
+            self.update_state(DeviceState.ARMED)
+        else:
+            self.__logger.info("Button released")
+    
     def wait_for_press(self):
+        GPIO.remove_event_detect(self.button_pin)  # Remove any existing detection
+        GPIO.add_event_detect(self.button_pin, GPIO.BOTH, callback=self.button_press, bouncetime=100)
+        
+            
+    def wait_for_press_2(self):
         # Block all events until button is pressed and device armed
         self.__logger.info("Waiting for arming button press...")
-        GPIO.wait_for_edge(self.button_pin, GPIO.FALLING)
-        # time.sleep(0.2)  # delay for debouncing
-        self.state = DeviceState.ARMED
+        while True:
+            if GPIO.input(self.button_pin) == GPIO.LOW:  # Button is pressed (GPIO input will be LOW)
+                time.sleep(0.2)  # Debounce delay
+                self.state = DeviceState.ARMED
+                self.set_led_state(self.state)
+                self.__logger.info(f"Button pressed received, system {self.state.name}")
+                break
+            time.sleep(0.01)
+        
+    def on_press(self):
+        """
+        Called when the button is pressed (falling edge).
+        """
+        self.__logger.info("Button press detected.")
+        self.state = DeviceState.ARMED  # Update the device state to ARMED
         self.set_led_state(self.state)
-        self.__logger.info("Button pressed received, system armed")
+        self.__logger.info("System armed.")
 
     def set_colour(self, colour):
         """
@@ -81,57 +109,3 @@ class ArmingButton:
 
     def __del__(self):
         self.cleanup()
-
-    # pause()
-
-    # GPIO.setmode(GPIO.BCM)
-    # GPIO.setup(red_pin, GPIO.OUT)  # Red
-    # GPIO.setup(green_pin, GPIO.OUT)  # Green
-    # GPIO.setup(blue_pin, GPIO.OUT)  # Blue
-
-    # self.button = Button(button_pin)  # Switch connected to GPIO17 (edit with pin used)
-
-    # self.red = PWMLED(22)
-    # self.green = PWMLED(23)
-    # self.blue = PWMLED(24)
-#  Currently interrupt not used assuming once armed, button press has no effect
-#  def __setup_interrupt_event(self, bouncetime=100):
-#         GPIO.add_event_detect(
-#             self.button_pin,
-#             GPIO.FALLING,
-#             callback=self.on_press,
-#             bouncetime=bouncetime,  # configure
-#         )
-
-#     def on_press(self):
-#         self.__logger.info("Arming button pressed")
-
-#         # Set LED colour to red
-#         self.set_colour("RED")
-#         self.state = DeviceState.DISARMED
-
-#     def on_release(self):
-#         # Set LED colour to green (armed)
-#         self.set_colour("GREEN")
-#         self.state = DeviceState.ARMED
-
-#     # self.button.when_pressed = on_press
-#     # self.button.when_release = on_release
-
-#     def toggle_state(self):
-#         """
-#         Toggle between armed and disarmed state
-#         Updates LED colours to match state and calls stop_event for disarm
-#         """
-#         self.armed = not self.armed
-
-#         if self.armed:
-#             print("[Button] System ARMED")
-#             self.set_colour(0, 1, 0)  # Set to green
-#         else:
-#             print("[Button] System DISARMED")
-#             self.set_colour(1, 0, 0)  # Set to red
-#             if self.stop_event:
-#                 print("[Button] Triggering stop_event")
-#                 self.stop_event.set()
-

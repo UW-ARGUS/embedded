@@ -15,13 +15,15 @@ if __name__ == "__main__":
     )
     logging.info("Main starting")
 
-    arming_btn = ArmingButton()
+    arming_btn = ArmingButton()  # Default: DISARMED, red
 
     # Starts main controller for all subsystems (IMU, Camera)
     controller = SystemController()
-
-    # Default: DISARMED, red
-    arming_btn.wait_for_press()  # Wait for button press before starting sensors
+    
+     # Initialize the controller but don't start IMU and Camera until the button is pressed
+    arming_btn.wait_for_press_2() # Wait for button press before starting sensors
+            
+    # Once the button is pressed, update the state and start subsystems
     controller.start()  # Start camera and IMU workers
 
     try:

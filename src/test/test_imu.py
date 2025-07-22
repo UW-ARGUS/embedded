@@ -39,7 +39,7 @@ if __name__ == "__main__":
             # logging.debug("test")
             imu_data.print_raw()
             data = imu_data.get()
-            with open("imu_data_8_short_side_x.txt", "a") as file:
+            with open("test/imu_test/7_20/imu_data_throw_4_start_y_up.txt", "a") as file:
                 file.write(f"{time.time()} - Accel:{data[0]} m/s^2, Gyro: {data[1]}, Mag: {data[2]} \n")
             # logging.debug(f"State value: {imu_data.get_state().name}: {imu_data.get_state().value}")
             time.sleep(0.2)

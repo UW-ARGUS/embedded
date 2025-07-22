@@ -14,9 +14,11 @@ from .camera_worker import CameraWorker
 # TODO: Move constants to .yaml file
 NUM_CAMERAS = 4  # Num cameras connected to RPI
 BASE_PORT = 5000  # Base port for the TCP socket transmissions
-SERVER_HOST = "192.168.194.44" # "192.168.194.77" # "192.168.2.208"  #  "192.168.194.189"  #"192.168.194.44" #   # Update value with base station IP address
-CAMERA_FPS = 90.0  # FPS for streaming
-
+SERVER_HOST = "192.168.194.241"
+# Mihir: "192.168.194.44" # "192.168.68.172"# Florence "192.168.194.189"# "192.168.194.44" # "192.168.194.77" # "192.168.2.208"  #  "192.168.194.189"  #"192.168.194.44" #   # Update value with base station IP address
+# CAMERA_FPS = 90.0  # FPS for streaming
+CAMERA_FPS = 2.0
+# SERVER_HOST = "127.0.0.1" # pi
 LOG_LEVEL = logging.DEBUG
 
 @dataclass
@@ -125,10 +127,10 @@ class CameraDeviceManager:
             # device_idx = int(port[0])
             device_path = port[1]
             device_id = int(device_path.replace("/dev/video", ""))  # Extract device id
-            self.__logger.info(f"device_id: {device_id}, {i},{len(cam_map)}")
+            # self.__logger.info(f"device_id: {device_id}, {i},{len(cam_map)}")
 
             device_port = BASE_PORT + i
-            self.__logger.info(f"USB port {port} -> {device_path}")
+            # self.__logger.info(f"USB port {port} -> {device_path}")
 
             # Create worker instance (opens camera and creates individual socket)
             self.__logger.info(
@@ -156,7 +158,7 @@ class CameraDeviceManager:
                 )
             )
 
-        self.__logger.info(f"All camera workers running {[w.process.name for w in self.worker_queue]}")
+        self.__logger.info(f"All camera workers running {[w.process.name for w in self.worker_queue]}\n")
 
     def stop_workers(self):
         """
