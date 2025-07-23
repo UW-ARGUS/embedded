@@ -24,8 +24,8 @@ class CameraWorker:
         self.camera = None  # OpenCV camera object
         self.socket = None  # TCP server socket
         self.stop_event = stop_event
-        self.height = 320
-        self.width = 240
+        # self.width, self.height = 320, 240
+        self.width, self.height = 640, 480
 
         logging.basicConfig(level=logging.DEBUG)
         self.__logger = logging.getLogger(__name__)

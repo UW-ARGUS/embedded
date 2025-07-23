@@ -174,65 +174,6 @@ class IMUWorker:
             self.__logger.info("[IMUWorker] Process interrupted by user")
         
         self.__logger.info("[IMUWorker] Exiting")
-        
-        # Wait for processes to finish
-        # self.sensor_process.join()
-        # self.socket_process.join()
-        
-        # self.__logger.info("Exiting IMU")
-                
-    def run_old(self):
-        self.__logger.info("[IMU] Running IMU")
-
-        # Intiailizie ICM 20948 IMU
-        try:
-            i2c = board.I2C()  # uses board.SCL and board.SDA
-            # self.__logger.debug("Setup i2c board clock and data")
-                
-            sensor = adafruit_icm20x.ICM20948(i2c, address=0x69)
-            self.__logger.debug("[IMU] IMU sensor initialized")
-        except ValueError as e:
-            self.__logger.error(f"[IMU] No I2C device found at the given address: {e}")
-            return # Return error if no sensor successfully setup
-
-        # Run until stop event triggered
-        while not self.stop_event.is_set():
-            try:
-                # Reads accelereation, gyronometer, and magnetometer sensor data (tuple)
-                accel = sensor.acceleration
-                gyro = sensor.gyro
-                mag = sensor.magnetic
-
-                # Atomically update shared memory
-                self.shared_data.set(accel, gyro, mag)
-
-                # Print calibrated values for debugging
-                # self.shared_data.print()
-                self.shared_data.print_raw()
-                # payload = self.__pack_binary_imu_data()
-                # self.__logger.debug(f"binary struct payload: {payload}") # print payload for debuggin
-
-                # json_data = self.__json_imu_data()
-                # self.__logger.debug(f"json payload: {json_data}") # print payload for debugging
-
-                # Check if socket is connected. If not, attempt to reconnect every interval (SOCKET_RETRY_WINDOW)
-                # Send data if socket exists
-                # if self.socket:
-                #     try:
-                #         self.send_imu_data()
-                #     except (BrokenPipeError, ConnectionResetError) as e:
-                #         self.__logger.error(f"[IMU] Unable to connect to server: {e}")
-                #         self.socket = None
-                # else:
-                #     # Retry socket connection every 5 seconds
-                #     self.__retry_socket_conn()
-
-            except Exception as e:
-                self.__logger.error(f"[IMUWorker] Error: {e}")
-
-            time.sleep(0.02)  # 50 Hz delay
-            # time.sleep(1)
-        self.__logger.info("[IMUWorker] Exiting")
 
     def __setup_socket(self):
         """

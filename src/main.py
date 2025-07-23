@@ -14,12 +14,16 @@ if __name__ == "__main__":
         level=logging.DEBUG, handlers=[logging.StreamHandler()]  # output to console
     )
     logging.info("Main starting")
-
-    arming_btn = ArmingButton()  # Default: DISARMED, red
-
+    
     # Starts main controller for all subsystems (IMU, Camera)
     controller = SystemController()
+
+    arming_btn = ArmingButton()  # Default: DISARMED, red
     
+    # Button thread
+    # button_thread = threading.Thread(target=arming_btn.run, daemon=True)
+    # button_thread.start()
+
      # Initialize the controller but don't start IMU and Camera until the button is pressed
     arming_btn.wait_for_press_2() # Wait for button press before starting sensors
             
