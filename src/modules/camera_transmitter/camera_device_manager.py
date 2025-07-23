@@ -112,13 +112,14 @@ class CameraDeviceManager:
 
         return camera_map
 
-    def start_camera_workers(self):
+    def start_camera_workers(self, cam_map=None):
         """
         Start individual processes for each camera device and socket with unique port
         """
         self.__logger.info("Starting camera workers")
 
-        cam_map = self.__get_usb_ports()
+        if cam_map == None:
+            cam_map = self.__get_usb_ports()
         # for port, dev in cam_map.items():
         #     self.__logger.info(f"USB port {port} -> {dev}")
 

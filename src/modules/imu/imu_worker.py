@@ -6,7 +6,10 @@ import adafruit_icm20x
 import socket
 import struct
 import json
+import numpy as np
+from ahrs.filters import Madgwick
 from multiprocessing import Process
+from scipy.spatial.transform import Rotation as R
 
 
 class IMUWorker:
@@ -14,8 +17,9 @@ class IMUWorker:
     IMU data processing for local sensing and to help change states
     """
     SOCKET_RETRY_WINDOW = 10
+    SAMPLE_PERIOD = 0.02
 
-    def __init__(self, host, port, stop_event, shared_data, send_mode="json"):
+    def __init__(self, host, port, stop_event, shared_data, send_mode="json", use_magwick=False):
         """
         shared_data: multiprocessing Array of doubles that can hold 9 values (eg. mp.Array('d',9))
         stop_event: multiprocessing event
@@ -34,6 +38,11 @@ class IMUWorker:
 
         # Shared message queue so latest sensor readings and states are tracked and updated to trigger events
         self.shared_data = shared_data
+        
+        self.use_magwick = use_magwick       
+        self.madgwick_filter = Madgwick(sampleperiod=self.SAMPLE_PERIOD) #, beta=0.7) # Madgwck filter for estimating orientation
+        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0]) # Initial quaternion
+        self.gravity_world = np.array([0.0, 0.0, -9.81]) # Acceleration due to gravity in the world frame
         
         self.socket_process = None # Background socket process for reconnecting
         self.sensor_process = None # Process for sensor data reading
@@ -66,21 +75,70 @@ class IMUWorker:
                 gyro = sensor.gyro
                 mag = sensor.magnetic
 
-                # Atomically update shared memory
-                self.shared_data.set(accel, gyro, mag)
+                if self.use_magwick:
+                    accel_without_gravity = self.__get_acceleration_data_without_gravity(accel, gyro)#, mag)
+                    self.shared_data.set(accel_without_gravity, gyro, mag)
+                else:
+                    # Atomically update shared memory
+                    self.shared_data.set(accel, gyro, mag)
 
                 # Print calibrated values for debugging
                 # self.shared_data.print()
-                # self.shared_data.print_raw()
+                self.shared_data.print_raw()
                 # payload = self.__pack_binary_imu_data()
                 # self.__logger.debug(f"binary struct payload: {payload}") # print payload for debuggin
 
                 # json_data = self.__json_imu_data()
                 # self.__logger.debug(f"json payload: {json_data}") # print payload for debugging
-                time.sleep(0.02)
+                time.sleep(self.SAMPLE_PERIOD)
                 # time.sleep(1)
             except Exception as e:
                 self.__logger.error(f"Error: {e}")
+    
+    def __get_acceleration_data_without_gravity(
+        self,
+        acceleration_data: tuple[float, float, float],
+        gyroscope_data: tuple[float, float, float],
+    ) -> tuple[float, float, float]:
+        """
+        Removes acceleration due to gravity from the IMU readings,
+        and logs Euler angles from Madgwick orientation estimate.
+        """
+
+        # Convert acceleration to g (Madgwick expects this)
+        acceleration_data_g = tuple(a / 9.81 for a in acceleration_data)
+
+        # Update the Madgwick filter
+        self.quaternion = self.madgwick_filter.updateIMU(
+            self.quaternion,
+            gyroscope_data,
+            acceleration_data_g,
+        )
+
+        # Convert quaternion to rotation object
+        rotation_world_to_body = R.from_quat([
+            self.quaternion[1],  # x
+            self.quaternion[2],  # y
+            self.quaternion[3],  # z
+            self.quaternion[0],  # w
+        ])
+
+        # Log Euler angles (in degrees)
+        euler_angles = rotation_world_to_body.as_euler('xyz', degrees=True)
+        roll, pitch, yaw = euler_angles
+        self.__logger.debug(f"[IMU] Euler Angles - Roll: {roll:.2f}, Pitch: {pitch:.2f}, Yaw: {yaw:.2f}")
+
+        # Rotate gravity from world to body frame
+        gravity_body = rotation_world_to_body.apply(self.gravity_world)
+
+        # Subtract gravity from raw acceleration
+        acceleration_data_without_gravity = (
+            acceleration_data[0] - gravity_body[0],
+            acceleration_data[1] - gravity_body[1],
+            acceleration_data[2] - gravity_body[2],
+        )
+
+        return acceleration_data_without_gravity
     
     def __handle_socket_comm(self):
         
