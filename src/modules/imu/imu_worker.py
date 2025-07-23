@@ -76,7 +76,7 @@ class IMUWorker:
                 mag = sensor.magnetic
 
                 if self.use_magwick:
-                    accel_without_gravity = self.__get_acceleration_data_without_gravity(accel, gyro, mag)
+                    accel_without_gravity = self.__get_acceleration_data_without_gravity(accel, gyro)#, mag)
                     self.shared_data.set(accel_without_gravity, gyro, mag)
                 else:
                     # Atomically update shared memory
@@ -99,53 +99,45 @@ class IMUWorker:
         self,
         acceleration_data: tuple[float, float, float],
         gyroscope_data: tuple[float, float, float],
-        magnetometer_data:tuple[float, float, float],
     ) -> tuple[float, float, float]:
         """
-        Removes acceleration due to gravity from the IMU readings.
-
-        Parameters
-        ----------
-        acceleration_data: The measured acceleration data in X, Y, and Z axes.
-        gyroscope_data: The measured angular speed data in X, Y, and Z axes.
-
-        Returns
-        -------
-        tuple(float, float, float): The calibrated acceleration data in X, Y, and Z axes.
+        Removes acceleration due to gravity from the IMU readings,
+        and logs Euler angles from Madgwick orientation estimate.
         """
-        # Update the Madgwick filter with IMU data
-        # self.quaternion = self.madgwick_filter.updateIMU(  # updateIMU ignore magnetometer data so the filter has no reference which be why it drifts
-        self.quaternion = self.madgwick_filter.updateMARG(  # full update with magnetometer
+
+        # Convert acceleration to g (Madgwick expects this)
+        acceleration_data_g = tuple(a / 9.81 for a in acceleration_data)
+
+        # Update the Madgwick filter
+        self.quaternion = self.madgwick_filter.updateIMU(
             self.quaternion,
             gyroscope_data,
-            acceleration_data,
-            magnetometer_data,
+            acceleration_data_g,
         )
 
-        # Convert the quaternion into its corresponding rotation
-        rotation_world_to_body = R.from_quat(
-            [
-                self.quaternion[1],
-                self.quaternion[2],
-                self.quaternion[3],
-                self.quaternion[0],
-            ]
-        )
+        # Convert quaternion to rotation object
+        rotation_world_to_body = R.from_quat([
+            self.quaternion[1],  # x
+            self.quaternion[2],  # y
+            self.quaternion[3],  # z
+            self.quaternion[0],  # w
+        ])
 
-        # Get the gravity vector in the body coordinate system
+        # Log Euler angles (in degrees)
+        euler_angles = rotation_world_to_body.as_euler('xyz', degrees=True)
+        roll, pitch, yaw = euler_angles
+        self.__logger.debug(f"[IMU] Euler Angles - Roll: {roll:.2f}, Pitch: {pitch:.2f}, Yaw: {yaw:.2f}")
+
+        # Rotate gravity from world to body frame
         gravity_body = rotation_world_to_body.apply(self.gravity_world)
-        
-        self.__logger.debug(f"{acceleration_data[0]}, {gravity_body[0]}")
-        self.__logger.debug(f"{acceleration_data[1]}, {gravity_body[1]}")
-        self.__logger.debug(f"{acceleration_data[2]}, {gravity_body[2]}")
 
-        # Get the acceleration data without gravity
+        # Subtract gravity from raw acceleration
         acceleration_data_without_gravity = (
             acceleration_data[0] - gravity_body[0],
             acceleration_data[1] - gravity_body[1],
             acceleration_data[2] - gravity_body[2],
         )
-        
+
         return acceleration_data_without_gravity
     
     def __handle_socket_comm(self):
