@@ -2,6 +2,7 @@ import logging
 # from gpiozero import Button, PWMLED
 import RPi.GPIO as GPIO
 import time
+import threading
 
 # from signal import pause
 from modules.device_state import DeviceState
