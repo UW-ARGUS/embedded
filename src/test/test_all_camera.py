@@ -22,7 +22,7 @@ def main():
     all_ports = manager._CameraDeviceManager__get_usb_ports()
     
     # width, height = 320, 240
-    width, height = 640, 480
+    width, height = 1600, 1200
     # width, height = 800, 600
 
     # Test getting one frame from each /dev/videoX path to ensure each camera can be read

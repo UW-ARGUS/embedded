@@ -6,6 +6,7 @@ import logging
 
 
 class CameraWorker:
+    DELAY_SECONDS = 5
     def __init__(
         self,
         device_id: int,
@@ -25,7 +26,9 @@ class CameraWorker:
         self.socket = None  # TCP server socket
         self.stop_event = stop_event
         # self.width, self.height = 320, 240
-        self.width, self.height = 640, 480
+        self.width, self.height = 1920, 1200
+        # self.width, self.height = 1600, 1200 # best so far
+        # self.width, self.height = 1280, 960
 
         logging.basicConfig(level=logging.DEBUG)
         self.__logger = logging.getLogger(__name__)
@@ -150,7 +153,9 @@ class CameraWorker:
         - N bytes: encoded image frame
         """
         # delay_seconds = float(1.0 / self.fps)
-        delay_seconds = 1.0/max(self.fps, 1.0)
+        # delay_seconds = 1.0/max(self.fps, 1.0)
+        # delay_seconds = 5
+        
 
         while not self.stop_event.is_set():
             # Capture frame
@@ -192,7 +197,7 @@ class CameraWorker:
                 self.__logger.error(f"[Camera-{self.id}] Unable to connect to server")
                 break
 
-            time.sleep(delay_seconds)
+            time.sleep(self.DELAY_SECONDS)
 
     def __del__(self):
         """

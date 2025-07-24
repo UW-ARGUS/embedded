@@ -218,7 +218,7 @@ class IMUWorker:
 
         # delay_seconds = 2
         try:
-            if self.mode == "json":
+            if self.send_mode == "json":
                 # JSON serializable format
                 payload = self.__json_imu_data()
             else:
