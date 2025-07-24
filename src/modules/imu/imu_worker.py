@@ -18,6 +18,7 @@ class IMUWorker:
     """
     SOCKET_RETRY_WINDOW = 10
     SAMPLE_PERIOD = 0.02
+    SEND_DELAY = 1 # seconds
 
     def __init__(self, host, port, stop_event, shared_data, send_mode="json", use_magwick=False):
         """
@@ -211,12 +212,12 @@ class IMUWorker:
 
 
     def send_imu_data(self):
-        self.__logger.info(f"Sending data: {self.socket}")
+        self.__logger.debug(f"Sending data: {self.socket}")
         if not self.socket:
             self.__retry_socket_conn()
             return
 
-        # delay_seconds = 2
+        # delay_seconds = 1
         try:
             if self.send_mode == "json":
                 # JSON serializable format
@@ -228,13 +229,13 @@ class IMUWorker:
             # Packed struct
             self.socket.sendall(payload)
 
-            self.__logger.debug("[IMU] Packed data sent successfully")
+            self.__logger.info(f"[IMU] Packed data sent successfully {payload}")
         except (BrokenPipeError, ConnectionResetError):
             self.socket = None
         except Exception as e:
-            self.__logger.error(f"[IMUWorker] Error sending IMU data: {json_err}")
+            self.__logger.error(f"[IMUWorker] Error sending IMU data {payload}: {e}")
 
-        # time.sleep(delay_seconds)
+        time.sleep(self.SEND_DELAY)
 
     def __pack_binary_imu_data(self):
         """
@@ -283,6 +284,7 @@ class IMUWorker:
 
         # Convert dict to JSON string
         json_data = json.dumps(data)  
+        self.__logger.debug(f"JSON data: {json_data}")
         
         return json_data.encode('utf-8') + b'\n' # Add newline as delimiter
 
