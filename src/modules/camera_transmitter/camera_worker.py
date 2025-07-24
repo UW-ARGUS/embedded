@@ -6,6 +6,7 @@ import logging
 
 
 class CameraWorker:
+    DELAY_SECONDS = 5
     def __init__(
         self,
         device_id: int,
@@ -24,8 +25,10 @@ class CameraWorker:
         self.camera = None  # OpenCV camera object
         self.socket = None  # TCP server socket
         self.stop_event = stop_event
-        self.height = 320
-        self.width = 240
+        # self.width, self.height = 320, 240
+        self.width, self.height = 1920, 1200
+        # self.width, self.height = 1600, 1200 # best so far
+        # self.width, self.height = 1280, 960
 
         logging.basicConfig(level=logging.DEBUG)
         self.__logger = logging.getLogger(__name__)
@@ -52,12 +55,14 @@ class CameraWorker:
         """
 
         self.camera = cv2.VideoCapture(self.id)
+        self.camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
         if not self.camera.isOpened():
             raise RuntimeError("Failed to open camera")
 
-        # resolution
-        self.camera.set(self.height, self.width)
+        # set resolution
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
 
         self.__logger.info(f"[Camera-{self.id}] Camera successfully initialized")
 
@@ -85,31 +90,59 @@ class CameraWorker:
                 self.__logger.error(f"[Camera-{self.id}] Unexpected error: {e}, retrying in {RETRY_WINDOW}s...\n")
 
             time.sleep(RETRY_WINDOW)
+            
+    def retry_frame_read(self, retries=3, delay=0.1):
+        for _ in range(retries):
+            result, frame = self.camera.read()
+            if result:
+                return result, frame
+            time.sleep(delay)
+        self.__logger.warn(f"[Camera-{self.id}] Failed to capture frame after retries")
+        return False, None
+            
+    def stream_single_frame(self):
+        # Capture frame
+        try:
+            # result, frame = self.camera.read()
+            result, frame = self.retry_frame_read()
+            self.__logger.debug(f"Sending data {result}")
+        except Exception as e:
+            self.__logger.error(f"Error reading camera-{self.id}: {e}")
 
-        # raise RuntimeError(f"[Camera-{self.id}] Stopped before socket could connect")
-                
-                
-        #         # self.socket.connect((self.host, self.port))
-        #         for attempt in range(5):
-        #             try:
-        #                 self.socket.connect((self.host, self.port))
-        #                 logging.info(f"Camera {self.id} socket initialized!")
-        #                 return
-        #             except ConnectionRefusedError:
-        #                 logging.warning(f"[Camera-{self.id}] Connection refused, retrying in 2s...")
-        #                 time.sleep(2)
-        #         raise RuntimeError("Failed to connect after multiple attempts")
+        if not result:
+            self.__logger.warn(f"[Camera-{self.id}] Failed to capture frame {result}")
+            return
 
-        # except socket.timeout:
-        #     self.__logger.error("Connection timed out")
-        #     raise RuntimeError("Connection timed out")
+        # Encode frame
+        result, encoded_frame = cv2.imencode(".jpg", frame)
 
-        # except Exception as e:
-        #     self.__logger.error(f"Connection error: {e}")
-        #     raise RuntimeError(f"Connection failed: {e}")
+        if not result:
+            self.__logger.warn(f"[Camera-{self.id}] Failed to encode frame")
+            return
 
-        # self.__logger.info(f"Camera {self.id} socket initialized!")
+        data_to_send = encoded_frame.tobytes()
 
+        # Transmit image
+        timestamp = time.time()
+        length = len(data_to_send)
+
+        # Pack header (timestamp + length)
+        header = struct.pack(
+            ">dII",  # Big endian (network endianess), float64, uint32, uint32
+            timestamp,
+            self.id,
+            length,
+        )
+
+        try:
+            # Send header + image to server
+            payload = header + data_to_send
+            self.socket.sendall(payload)
+            self.__logger.info(f"[Camera-{self.id}] payload sent")
+        except (BrokenPipeError, ConnectionResetError):
+            self.__logger.error(f"[Camera-{self.id}] Unable to connect to server")
+            return
+        
     def __stream_frames(self):
         """
         Continuously capture and transmit frames over TCP
@@ -120,11 +153,14 @@ class CameraWorker:
         - N bytes: encoded image frame
         """
         # delay_seconds = float(1.0 / self.fps)
-        delay_seconds = float(5)
+        # delay_seconds = 1.0/max(self.fps, 1.0)
+        # delay_seconds = 5
+        
 
         while not self.stop_event.is_set():
             # Capture frame
-            result, frame = self.camera.read()
+            # result, frame = self.camera.read()
+            result, frame = self.retry_frame_read()
             self.__logger.debug(f"Sending data {result}")
 
             if not result:
@@ -161,7 +197,7 @@ class CameraWorker:
                 self.__logger.error(f"[Camera-{self.id}] Unable to connect to server")
                 break
 
-            time.sleep(delay_seconds)
+            time.sleep(self.DELAY_SECONDS)
 
     def __del__(self):
         """

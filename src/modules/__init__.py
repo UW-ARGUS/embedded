@@ -1,7 +1,7 @@
 import logging
 import sys
 
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 
 # Initialize the log handler
 handler = logging.StreamHandler(sys.stdout)

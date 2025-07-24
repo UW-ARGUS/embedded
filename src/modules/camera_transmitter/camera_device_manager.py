@@ -14,7 +14,10 @@ from .camera_worker import CameraWorker
 # TODO: Move constants to .yaml file
 NUM_CAMERAS = 4  # Num cameras connected to RPI
 BASE_PORT = 5000  # Base port for the TCP socket transmissions
-SERVER_HOST = "192.168.194.241"
+# SERVER_HOST = "127.0.0.1"  # local host
+SERVER_HOST = "192.168.194.155" # Base station
+# SERVER_HOST = "192.168.194.241"
+# SERVER_HOST= "192.168.194.24" # florence laptop2
 # Mihir: "192.168.194.44" # "192.168.68.172"# Florence "192.168.194.189"# "192.168.194.44" # "192.168.194.77" # "192.168.2.208"  #  "192.168.194.189"  #"192.168.194.44" #   # Update value with base station IP address
 # CAMERA_FPS = 90.0  # FPS for streaming
 CAMERA_FPS = 2.0
@@ -29,6 +32,12 @@ class CameraWorkerInfo:
     process: mp.Process
     device_id: int
     port: int
+
+@dataclass
+class CameraInfo:
+    device_id: int
+    port: int
+    camera_worker: CameraWorker
 
 
 class CameraDeviceManager:
@@ -49,6 +58,8 @@ class CameraDeviceManager:
         # self.stop_event = stop_event
         self.__logger = logging.getLogger(__name__)
         self.camera_map = {}  # List of usb camera devices connected
+        
+        self.camera_queue = deque()
 
     def __get_usb_ports(self):
         """
@@ -111,14 +122,15 @@ class CameraDeviceManager:
         self.camera_map = camera_map
 
         return camera_map
-
-    def start_camera_workers(self):
+    
+    def start_camera_workers_mult_process(self, cam_map=None):
         """
         Start individual processes for each camera device and socket with unique port
         """
         self.__logger.info("Starting camera workers")
 
-        cam_map = self.__get_usb_ports()
+        if cam_map == None:
+            cam_map = self.__get_usb_ports()
         # for port, dev in cam_map.items():
         #     self.__logger.info(f"USB port {port} -> {dev}")
 
@@ -159,6 +171,89 @@ class CameraDeviceManager:
             )
 
         self.__logger.info(f"All camera workers running {[w.process.name for w in self.worker_queue]}\n")
+
+
+    def start_camera_workers(self, cam_map=None, limit=None):
+        """
+        Start individual processes for each camera device and socket with unique port
+        """
+        self.__logger.info("Starting camera workers")
+
+        if cam_map == None:
+            cam_map = self.__get_usb_ports()
+        
+        # Limit how many cameras to start
+        items = list(cam_map.items())
+        if limit is not None:
+            items = items[:limit]
+
+        # Manually get USB device port numbers, only starting cameras actually connected
+        for i, port in enumerate(cam_map.items()):
+            device_path = port[1]
+            device_id = int(device_path.replace("/dev/video", ""))  # Extract device id
+
+            device_port = BASE_PORT + i
+
+            # Create worker instance (opens camera and creates individual socket)
+            self.__logger.info(
+                f"Starting Camera_worker ({device_id}, {device_port})"
+            )  # Port is incremented by 1 each time in cam_map
+
+            # Initialize devices for all USB cameras to fetch video/ image data from
+            # Each CameraWorker process controls its own socket and camera device
+            camera_worker = CameraWorker(
+                host=SERVER_HOST,
+                port=device_port,
+                device_id=device_id,
+                fps=CAMERA_FPS,
+                stop_event=self.stop_event,
+            )
+            
+            # Setup camera
+            camera_worker.run_camera()
+            
+            self.camera_queue.append(CameraInfo(
+                    device_id=device_id,
+                    port=device_port,
+                    camera_worker=camera_worker,
+                )
+            )
+
+            # Start new process and add to queue
+            # process = mp.Process(target=camera_worker.run_camera, name=f"Worker-{device_id}")
+            # process.start()
+
+            # self.worker_queue.append(CameraWorkerInfo(
+            #         process=process,
+            #         device_id=device_id,
+            #         port=device_port,
+            #     )
+            # )
+            
+        # Start new process and add to queue
+        process = mp.Process(target=self.run_workers) #, name=f"Worker-{device_id}")
+        process.start()
+
+        self.worker_queue.append(CameraWorkerInfo(
+                process=process,
+                device_id=device_id,
+                port=device_port,
+            )
+        )
+        self.__logger.info(f"All camera workers running {[w.device_id for w in self.camera_queue]}\n")
+
+        # self.__logger.info(f"All camera workers running {[w.process.name for w in self.worker_queue]}\n")
+    def run_workers(self):
+        # poll cameras
+        while not self.stop_event.is_set():
+            self.__logger.info(f"Running cameras")
+            for worker in self.camera_queue:
+                try:
+                    self.__logger.info(f"Streaming camera {worker.device_id}")
+                    worker.camera_worker.stream_single_frame()
+                except Exception as e:
+                    self.__logger.info(f"error: {e}")
+                time.sleep(0.5)
 
     def stop_workers(self):
         """

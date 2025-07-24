@@ -22,3 +22,4 @@ if __name__ == "__main__":
 
     camera_controller = CameraDeviceManager(stop_event=stop_event)
     camera_controller.start_camera_workers()
+    # camera_controller.start_camera_workers_mult_process()

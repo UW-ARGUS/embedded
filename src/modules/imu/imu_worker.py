@@ -6,7 +6,10 @@ import adafruit_icm20x
 import socket
 import struct
 import json
+import numpy as np
+from ahrs.filters import Madgwick
 from multiprocessing import Process
+from scipy.spatial.transform import Rotation as R
 
 
 class IMUWorker:
@@ -14,8 +17,10 @@ class IMUWorker:
     IMU data processing for local sensing and to help change states
     """
     SOCKET_RETRY_WINDOW = 10
+    SAMPLE_PERIOD = 0.02
+    SEND_DELAY = 1 # seconds
 
-    def __init__(self, host, port, stop_event, shared_data, send_mode="json"):
+    def __init__(self, host, port, stop_event, shared_data, send_mode="json", use_magwick=False):
         """
         shared_data: multiprocessing Array of doubles that can hold 9 values (eg. mp.Array('d',9))
         stop_event: multiprocessing event
@@ -34,6 +39,11 @@ class IMUWorker:
 
         # Shared message queue so latest sensor readings and states are tracked and updated to trigger events
         self.shared_data = shared_data
+        
+        self.use_magwick = use_magwick       
+        self.madgwick_filter = Madgwick(sampleperiod=self.SAMPLE_PERIOD) #, beta=0.7) # Madgwck filter for estimating orientation
+        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0]) # Initial quaternion
+        self.gravity_world = np.array([0.0, 0.0, -9.81]) # Acceleration due to gravity in the world frame
         
         self.socket_process = None # Background socket process for reconnecting
         self.sensor_process = None # Process for sensor data reading
@@ -66,21 +76,70 @@ class IMUWorker:
                 gyro = sensor.gyro
                 mag = sensor.magnetic
 
-                # Atomically update shared memory
-                self.shared_data.set(accel, gyro, mag)
+                if self.use_magwick:
+                    accel_without_gravity = self.__get_acceleration_data_without_gravity(accel, gyro)#, mag)
+                    self.shared_data.set(accel_without_gravity, gyro, mag)
+                else:
+                    # Atomically update shared memory
+                    self.shared_data.set(accel, gyro, mag)
 
                 # Print calibrated values for debugging
                 # self.shared_data.print()
-                # self.shared_data.print_raw()
+                self.shared_data.print_raw()
                 # payload = self.__pack_binary_imu_data()
                 # self.__logger.debug(f"binary struct payload: {payload}") # print payload for debuggin
 
                 # json_data = self.__json_imu_data()
                 # self.__logger.debug(f"json payload: {json_data}") # print payload for debugging
-                time.sleep(0.02)
+                time.sleep(self.SAMPLE_PERIOD)
                 # time.sleep(1)
             except Exception as e:
                 self.__logger.error(f"Error: {e}")
+    
+    def __get_acceleration_data_without_gravity(
+        self,
+        acceleration_data: tuple[float, float, float],
+        gyroscope_data: tuple[float, float, float],
+    ) -> tuple[float, float, float]:
+        """
+        Removes acceleration due to gravity from the IMU readings,
+        and logs Euler angles from Madgwick orientation estimate.
+        """
+
+        # Convert acceleration to g (Madgwick expects this)
+        acceleration_data_g = tuple(a / 9.81 for a in acceleration_data)
+
+        # Update the Madgwick filter
+        self.quaternion = self.madgwick_filter.updateIMU(
+            self.quaternion,
+            gyroscope_data,
+            acceleration_data_g,
+        )
+
+        # Convert quaternion to rotation object
+        rotation_world_to_body = R.from_quat([
+            self.quaternion[1],  # x
+            self.quaternion[2],  # y
+            self.quaternion[3],  # z
+            self.quaternion[0],  # w
+        ])
+
+        # Log Euler angles (in degrees)
+        euler_angles = rotation_world_to_body.as_euler('xyz', degrees=True)
+        roll, pitch, yaw = euler_angles
+        self.__logger.debug(f"[IMU] Euler Angles - Roll: {roll:.2f}, Pitch: {pitch:.2f}, Yaw: {yaw:.2f}")
+
+        # Rotate gravity from world to body frame
+        gravity_body = rotation_world_to_body.apply(self.gravity_world)
+
+        # Subtract gravity from raw acceleration
+        acceleration_data_without_gravity = (
+            acceleration_data[0] - gravity_body[0],
+            acceleration_data[1] - gravity_body[1],
+            acceleration_data[2] - gravity_body[2],
+        )
+
+        return acceleration_data_without_gravity
     
     def __handle_socket_comm(self):
         
@@ -115,65 +174,6 @@ class IMUWorker:
             self.stop_event.set()
             self.__logger.info("[IMUWorker] Process interrupted by user")
         
-        self.__logger.info("[IMUWorker] Exiting")
-        
-        # Wait for processes to finish
-        # self.sensor_process.join()
-        # self.socket_process.join()
-        
-        # self.__logger.info("Exiting IMU")
-                
-    def run_old(self):
-        self.__logger.info("[IMU] Running IMU")
-
-        # Intiailizie ICM 20948 IMU
-        try:
-            i2c = board.I2C()  # uses board.SCL and board.SDA
-            # self.__logger.debug("Setup i2c board clock and data")
-                
-            sensor = adafruit_icm20x.ICM20948(i2c, address=0x69)
-            self.__logger.debug("[IMU] IMU sensor initialized")
-        except ValueError as e:
-            self.__logger.error(f"[IMU] No I2C device found at the given address: {e}")
-            return # Return error if no sensor successfully setup
-
-        # Run until stop event triggered
-        while not self.stop_event.is_set():
-            try:
-                # Reads accelereation, gyronometer, and magnetometer sensor data (tuple)
-                accel = sensor.acceleration
-                gyro = sensor.gyro
-                mag = sensor.magnetic
-
-                # Atomically update shared memory
-                self.shared_data.set(accel, gyro, mag)
-
-                # Print calibrated values for debugging
-                # self.shared_data.print()
-                self.shared_data.print_raw()
-                # payload = self.__pack_binary_imu_data()
-                # self.__logger.debug(f"binary struct payload: {payload}") # print payload for debuggin
-
-                # json_data = self.__json_imu_data()
-                # self.__logger.debug(f"json payload: {json_data}") # print payload for debugging
-
-                # Check if socket is connected. If not, attempt to reconnect every interval (SOCKET_RETRY_WINDOW)
-                # Send data if socket exists
-                # if self.socket:
-                #     try:
-                #         self.send_imu_data()
-                #     except (BrokenPipeError, ConnectionResetError) as e:
-                #         self.__logger.error(f"[IMU] Unable to connect to server: {e}")
-                #         self.socket = None
-                # else:
-                #     # Retry socket connection every 5 seconds
-                #     self.__retry_socket_conn()
-
-            except Exception as e:
-                self.__logger.error(f"[IMUWorker] Error: {e}")
-
-            time.sleep(0.02)  # 50 Hz delay
-            # time.sleep(1)
         self.__logger.info("[IMUWorker] Exiting")
 
     def __setup_socket(self):
@@ -212,14 +212,14 @@ class IMUWorker:
 
 
     def send_imu_data(self):
-        self.__logger.info(f"Sending data: {self.socket}")
+        self.__logger.debug(f"Sending data: {self.socket}")
         if not self.socket:
             self.__retry_socket_conn()
             return
 
-        # delay_seconds = 2
+        # delay_seconds = 1
         try:
-            if self.mode == "json":
+            if self.send_mode == "json":
                 # JSON serializable format
                 payload = self.__json_imu_data()
             else:
@@ -229,13 +229,13 @@ class IMUWorker:
             # Packed struct
             self.socket.sendall(payload)
 
-            self.__logger.debug("[IMU] Packed data sent successfully")
+            self.__logger.info(f"[IMU] Packed data sent successfully {payload}")
         except (BrokenPipeError, ConnectionResetError):
             self.socket = None
         except Exception as e:
-            self.__logger.error(f"[IMUWorker] Error sending IMU data: {json_err}")
+            self.__logger.error(f"[IMUWorker] Error sending IMU data {payload}: {e}")
 
-        # time.sleep(delay_seconds)
+        time.sleep(self.SEND_DELAY)
 
     def __pack_binary_imu_data(self):
         """
@@ -284,6 +284,7 @@ class IMUWorker:
 
         # Convert dict to JSON string
         json_data = json.dumps(data)  
+        self.__logger.debug(f"JSON data: {json_data}")
         
         return json_data.encode('utf-8') + b'\n' # Add newline as delimiter
 

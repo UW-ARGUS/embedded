@@ -31,18 +31,21 @@ if __name__ == "__main__":
 
         imu_shared_array = mp.Array("d", 9)
         imu_data = IMUSharedData(imu_shared_array)
+        
+        # use_magwick = True
 
         imu_manager = IMUManager(stop_event=stop_event, imu_data=imu_data)
-        imu_manager.start_imu_worker(imu_data)
+        imu_manager.start_imu_worker(imu_data) #, use_magwick)
 
         while True:
-            # logging.debug("test")
-            imu_data.print_raw()
+            # imu_data.print_raw()
             data = imu_data.get()
-            with open("test/imu_test/7_20/imu_data_throw_4_start_y_up.txt", "a") as file:
+            # print(data)
+            with open("test/imu_test/7_22/test_diff_2.txt", "a") as file:
                 file.write(f"{time.time()} - Accel:{data[0]} m/s^2, Gyro: {data[1]}, Mag: {data[2]} \n")
-            # logging.debug(f"State value: {imu_data.get_state().name}: {imu_data.get_state().value}")
-            time.sleep(0.2)
+                file.write(f"State value: {imu_data.get_state().name} ")
+            # logging.info(f"State value: {imu_data.get_state().name}: {imu_data.get_state().value}")
+            time.sleep(0.5)
     except KeyboardInterrupt:
         logging.info("Process interrupted by user")
     finally:

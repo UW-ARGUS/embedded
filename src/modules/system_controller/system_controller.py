@@ -37,7 +37,8 @@ class SystemController:
         """
         self.__logger.info("\nStarting IMU and camera workers")
         self.imu_controller.start_imu_worker(self.imu_data)
-        self.camera_controller.start_camera_workers()
+        # self.camera_controller.start_camera_workers()
+        self.camera_controller.start_camera_workers_mult_process()
 
     # TODO: IMU should also create socket and transmit IMU readings to terminal
     def get_imu_reading(self):
