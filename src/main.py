@@ -14,30 +14,37 @@ if __name__ == "__main__":
         level=logging.DEBUG, handlers=[logging.StreamHandler()]  # output to console
     )
     logging.info("Main starting")
-
-    arming_btn = ArmingButton()  # Default: DISARMED, red
-
+    
     # Starts main controller for all subsystems (IMU, Camera)
     controller = SystemController()
+
+    arming_btn = ArmingButton()  # Default: DISARMED, red
     
+    # Button thread
+    # button_thread = threading.Thread(target=arming_btn.run, daemon=True)
+    # button_thread.start()
+
      # Initialize the controller but don't start IMU and Camera until the button is pressed
     arming_btn.wait_for_press_2() # Wait for button press before starting sensors
             
     # Once the button is pressed, update the state and start subsystems
     controller.start()  # Start camera and IMU workers
-
+    prev_state = arming_btn.state
     try:
         while controller.is_running():
             # Read current IMU data
             # imu_reading = controller.get_imu_reading()
             # controller.imu_data.print()
+            
+            current_state = controller.imu_data.get_state()
+            
+            # Poll IMU state and update button state accordingly if changed, display state colour on button LED
+            if current_state != prev_state:
+                arming_btn.update_state(current_state)
+                logging.info(f"State updated: {current_state}, {controller.imu_data.is_stationary()}")
+                prev_state = current_state
 
-            # Poll IMU to check if it reports stationary state
-            if arming_btn.state != DeviceState.STATIONARY and controller.imu_data.is_stationary():
-                # Set colour to blue when IMU is stationary, trigger mapping
-                arming_btn.update_state(DeviceState.STATIONARY)
-                logging.info("Device is stationary")
-            time.sleep(1)
+            time.sleep(0.5)
 
     except KeyboardInterrupt:
         logging.info("Process interrupted by user")

@@ -2,6 +2,7 @@ import logging
 # from gpiozero import Button, PWMLED
 import RPi.GPIO as GPIO
 import time
+import threading
 
 # from signal import pause
 from modules.device_state import DeviceState
@@ -49,11 +50,6 @@ class ArmingButton:
         else:
             self.__logger.info("Button released")
     
-    def wait_for_press(self):
-        GPIO.remove_event_detect(self.button_pin)  # Remove any existing detection
-        GPIO.add_event_detect(self.button_pin, GPIO.BOTH, callback=self.button_press, bouncetime=100)
-        
-            
     def wait_for_press_2(self):
         # Block all events until button is pressed and device armed
         self.__logger.info("Waiting for arming button press...")
@@ -66,22 +62,26 @@ class ArmingButton:
                 break
             time.sleep(0.01)
         
-    def on_press(self):
-        """
-        Called when the button is pressed (falling edge).
-        """
-        self.__logger.info("Button press detected.")
-        self.state = DeviceState.ARMED  # Update the device state to ARMED
-        self.set_led_state(self.state)
-        self.__logger.info("System armed.")
+    def run(self):
+        """Thread loop to monitor button state and update system"""
+        self.__logger.info("ArmingButton thread started")
+        while not self.stop_event.is_set():
+            button_state = GPIO.input(self.button_pin)
+            if button_state == GPIO.LOW and self.last_button_state == GPIO.HIGH:
+                time.sleep(self.debounce_delay)
+                self.update_state(DeviceState.ARMED)
+                self.__logger.info(f"Button pressed, system state: {self.state.name}")
+            self.last_button_state = button_state
+            time.sleep(self.polling_interval)
+
 
     def set_colour(self, colour):
         """
         Sets RGB LED colour
         1 = ON, 0 = OFF
         """
-        GPIO.output(self.led_pins["R"], GPIO.LOW if colour == "RED" else GPIO.HIGH)
-        GPIO.output(self.led_pins["G"], GPIO.LOW if colour == "GREEN" else GPIO.HIGH)
+        GPIO.output(self.led_pins["R"], GPIO.LOW if colour == "RED" or colour == "YELLOW" else GPIO.HIGH)
+        GPIO.output(self.led_pins["G"], GPIO.LOW if colour == "GREEN" or colour == "YELLOW" else GPIO.HIGH)
         GPIO.output(self.led_pins["B"], GPIO.LOW if colour == "BLUE" else GPIO.HIGH)
 
     def set_led_state(self, state: DeviceState):
@@ -94,6 +94,8 @@ class ArmingButton:
             self.set_colour("GREEN")
         elif state == DeviceState.STATIONARY:  # stationary = blue
             self.set_colour("BLUE")
+        elif state == DeviceState.MOVING:
+            self.set_colour("YELLOW")
 
     def update_state(self, new_state: DeviceState):
         """

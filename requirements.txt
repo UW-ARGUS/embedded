@@ -1,6 +1,8 @@
 # Packages listed in alphabetical order
+ahrs
 numpy
 opencv-python
+scipy
 
 # IMU
 adafruit-circuitpython-busdevice

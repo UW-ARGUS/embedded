@@ -21,7 +21,7 @@ class IMUManager:
         self.imu_process = None
         self.imu_worker = None
 
-    def start_imu_worker(self, imu_data):
+    def start_imu_worker(self, imu_data, use_magwick=False):
         """
         Initializes IMU worker using shared memory
         """
@@ -29,7 +29,8 @@ class IMUManager:
             host=self.HOST,
             port=self.PORT,         
             stop_event=self.stop_event, 
-            shared_data=imu_data)
+            shared_data=imu_data,
+            use_magwick=use_magwick)
         self.imu_process = mp.Process(target=self.imu_worker.run, name="IMU-Worker")
         self.imu_process.start()
 
