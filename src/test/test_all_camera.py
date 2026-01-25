@@ -15,7 +15,7 @@ from modules.camera_transmitter.camera_device_manager import CameraDeviceManager
 def main():
     current_file = Path(__file__).resolve()
     project_root = current_file.parents[2]  # Adjust depending on folder depth
-    output_dir = project_root / "test" / "test_all_camera" / "2025_07_23"
+    output_dir = project_root / "src" / "test" / "test_images"
     manager = CameraDeviceManager(stop_event=None)
 
     # Get all camera usb device ports

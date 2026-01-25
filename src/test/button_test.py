@@ -28,12 +28,12 @@ if __name__ == "__main__":
         while True:
             arming_btn.wait_for_press_2()  # Wait for button press before starting sensors
             
-            # # time.sleep(2)
-            # logging.info("Setting led to blue") 
+            # time.sleep(2)
+            logging.info("Setting led to blue") 
             
             # # Once the button is pressed, update the state and start subsystems
-            # logging.info("Arming button pressed, system armed")
-            # arming_btn.update_state(DeviceState.ARMED)
+            logging.info("Arming button pressed, system armed")
+            arming_btn.update_state(DeviceState.ARMED)
             
             input("Press Enter when ready to test again...")
             logging.info("Setting led to blue...")
@@ -44,7 +44,7 @@ if __name__ == "__main__":
             #     # Set colour to blue when IMU is stationary, trigger mapping
             #     arming_btn.update_state(DeviceState.STATIONARY)
             #     logging.info("Device is stationary")
-            # time.sleep(1)
+            time.sleep(1)
 
     except KeyboardInterrupt:
         logging.info("Process interrupted by user")

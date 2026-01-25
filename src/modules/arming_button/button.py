@@ -8,10 +8,10 @@ import threading
 from modules.device_state import DeviceState
 
 class ArmingButton:
-    BUTTON_PIN = 17
-    RED_PIN = 22
-    GREEN_PIN = 23
-    BLUE_PIN = 24
+    BUTTON_PIN = 22
+    RED_PIN = 10
+    GREEN_PIN = 9
+    BLUE_PIN = 11
 
     def __init__(
         self,
