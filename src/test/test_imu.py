@@ -41,10 +41,11 @@ if __name__ == "__main__":
             # imu_data.print_raw()
             data = imu_data.get()
             # print(data)
-            with open("test/imu_test/7_22/test_diff_2.txt", "a") as file:
-                file.write(f"{time.time()} - Accel:{data[0]} m/s^2, Gyro: {data[1]}, Mag: {data[2]} \n")
-                file.write(f"State value: {imu_data.get_state().name} ")
-            # logging.info(f"State value: {imu_data.get_state().name}: {imu_data.get_state().value}")
+            # with open("test/imu_test/7_22/test_diff_2.txt", "a") as file:
+                # file.write(f"{time.time()} - Accel:{data[0]} m/s^2, Gyro: {data[1]}, Mag: {data[2]} \n")
+                # file.write(f"State value: {imu_data.get_state().name} ")
+            device_state = imu_data.get_state()
+            logging.info(f"State value: {device_state.name}: {device_state.value}")
             time.sleep(0.5)
     except KeyboardInterrupt:
         logging.info("Process interrupted by user")
