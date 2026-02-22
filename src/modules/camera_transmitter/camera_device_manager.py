@@ -15,7 +15,7 @@ from .camera_worker import CameraWorker
 NUM_CAMERAS = 4  # Num cameras connected to RPI
 BASE_PORT = 5000  # Base port for the TCP socket transmissions
 # SERVER_HOST = "127.0.0.1"  # local host
-SERVER_HOST = "192.168.194.44"
+SERVER_HOST = "192.168.194.240"
 # "192.168.194.155" # Base station
 # SERVER_HOST = "192.168.194.241"
 # SERVER_HOST= "192.168.194.24" # florence laptop2

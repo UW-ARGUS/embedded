@@ -6,7 +6,7 @@ import logging
 
 
 class CameraWorker:
-    DELAY_SECONDS = 5
+    DELAY_SECONDS = 0.25
     def __init__(
         self,
         device_id: int,
@@ -95,7 +95,9 @@ class CameraWorker:
         for _ in range(retries):
             result, frame = self.camera.read()
             if result:
-                return result, frame
+                # Rotate the frame 180 degrees since cameras are placed upside down in the system
+                flipped_frame = cv2.rotate(frame, cv2.ROTATE_180)
+                return result, flipped_frame
             time.sleep(delay)
         self.__logger.warn(f"[Camera-{self.id}] Failed to capture frame after retries")
         return False, None
