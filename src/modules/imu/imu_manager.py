@@ -4,7 +4,7 @@ from .imu_worker import IMUWorker
 
 
 class IMUManager:
-    HOST="192.168.194.44"  # Base station IP
+    HOST="192.168.194.240"  # Base station IP
     PORT=6000
     def __init__(self, stop_event, imu_data):
         """

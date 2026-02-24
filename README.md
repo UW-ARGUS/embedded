@@ -67,3 +67,15 @@ To deactivate the virtual environment, run the command below.
 ```
 deactivate
 ```
+
+## Start the embedded service
+To make it so that the service autostarts, config so that device auto runs the embedded main.py file as a systemctl service
+
+# start_embedded.sh
+./embedded/start_embedded.sh
+Script to auto restart the ARGUS embedded service
+
+NOTE: Recommended to set up passwordless SSH access to avoid having to re-enter the ARGUS password
+```
+Run: ssh-copy-id argus@192.168.194.151
+```
